@@ -119,4 +119,11 @@ export const getCalls = (finalStatus: CallStates) => {
 };
 
 export const getInteractions = (finalStatus: CallStates) =>
-  getCalls(finalStatus).filter((call) => call.interceptable);
+  getCalls(finalStatus)
+    .filter((call) => call.interceptable)
+    .map((call, _, calls) => ({
+      ...call,
+      childCallIds: calls.filter((c) => c.parentId === call.id).map((c) => c.id),
+      isCollapsed: false,
+      toggleCollapsed: () => {},
+    }));

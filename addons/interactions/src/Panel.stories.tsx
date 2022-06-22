@@ -97,3 +97,11 @@ export const NoInteractions: Story = {
     interactions: [],
   },
 };
+
+export const CaughtException: Story = {
+  args: {
+    hasException: true,
+    interactions: [],
+    caughtException: new TypeError("Cannot read properties of undefined (reading 'args')"),
+  },
+};
