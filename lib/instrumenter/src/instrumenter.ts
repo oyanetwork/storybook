@@ -1,6 +1,7 @@
 /* eslint-disable no-underscore-dangle */
-import { addons, Channel, StoryId } from '@storybook/addons';
-import { once } from '@storybook/client-logger';
+import { addons, Channel } from '@storybook/addons';
+import type { StoryId } from '@storybook/addons';
+import { logger, once } from '@storybook/client-logger';
 import {
   FORCE_REMOUNT,
   IGNORED_EXCEPTION,
@@ -9,12 +10,11 @@ import {
 } from '@storybook/core-events';
 import global from 'global';
 
-import { Call, CallRef, CallStates, LogItem } from './types';
+import { Call, CallRef, CallStates, ControlStates, LogItem, Options, State } from './types';
 
 export const EVENTS = {
   CALL: 'instrumenter/call',
   SYNC: 'instrumenter/sync',
-  LOCK: 'instrumenter/lock',
   START: 'instrumenter/start',
   BACK: 'instrumenter/back',
   GOTO: 'instrumenter/goto',
@@ -22,31 +22,18 @@ export const EVENTS = {
   END: 'instrumenter/end',
 };
 
-export interface Options {
-  intercept?: boolean | ((method: string, path: Array<string | CallRef>) => boolean);
-  retain?: boolean;
-  mutate?: boolean;
-  path?: Array<string | CallRef>;
-  getArgs?: (call: Call, state: State) => Call['args'];
-}
-
-export interface State {
-  renderPhase: 'loading' | 'rendering' | 'playing' | 'played' | 'completed' | 'aborted' | 'errored';
-  isDebugging: boolean;
-  cursor: number;
-  calls: Call[];
-  shadowCalls: Call[];
-  callRefsByResult: Map<any, CallRef & { retain: boolean }>;
-  chainedCallIds: Set<Call['id']>;
-  parentCall?: Call;
-  playUntil?: Call['id'];
-  resolvers: Record<Call['id'], Function>;
-  syncTimeout: ReturnType<typeof setTimeout>;
-  forwardedException?: Error;
-}
-
-export type PatchedObj<TObj> = {
+type PatchedObj<TObj> = {
   [Property in keyof TObj]: TObj[Property] & { __originalFn__: PatchedObj<TObj> };
+};
+
+const debuggerDisabled = global.FEATURES?.interactionsDebugger !== true;
+const controlsDisabled: ControlStates = {
+  debugger: !debuggerDisabled,
+  start: false,
+  back: false,
+  goto: false,
+  next: false,
+  end: false,
 };
 
 const alreadyCompletedException = new Error(
@@ -75,16 +62,17 @@ const construct = (obj: any) => {
 const getInitialState = (): State => ({
   renderPhase: undefined,
   isDebugging: false,
+  isPlaying: false,
+  isLocked: false,
   cursor: 0,
   calls: [],
   shadowCalls: [],
   callRefsByResult: new Map(),
   chainedCallIds: new Set<Call['id']>(),
-  parentCall: undefined,
+  parentId: undefined,
   playUntil: undefined,
   resolvers: {},
   syncTimeout: undefined,
-  forwardedException: undefined,
 });
 
 const getRetainedState = (state: State, isDebugging = false) => {
@@ -114,7 +102,15 @@ export class Instrumenter {
     this.state = global.window.parent.__STORYBOOK_ADDON_INTERACTIONS_INSTRUMENTER_STATE__ || {};
 
     // When called from `start`, isDebugging will be true
-    const resetState = ({ storyId, isDebugging }: { storyId?: StoryId; isDebugging?: boolean }) => {
+    const resetState = ({
+      storyId,
+      isPlaying = true,
+      isDebugging = false,
+    }: {
+      storyId?: StoryId;
+      isPlaying?: boolean;
+      isDebugging?: boolean;
+    }) => {
       const state = this.getState(storyId);
       this.setState(storyId, {
         ...getInitialState(),
@@ -122,11 +118,12 @@ export class Instrumenter {
         shadowCalls: isDebugging ? state.shadowCalls : [],
         chainedCallIds: isDebugging ? state.chainedCallIds : new Set<Call['id']>(),
         playUntil: isDebugging ? state.playUntil : undefined,
+        isPlaying,
         isDebugging,
       });
 
       // Don't sync while debugging, as it'll cause flicker.
-      if (!isDebugging) this.channel.emit(EVENTS.SYNC, this.getLog(storyId));
+      if (!isDebugging) this.sync(storyId);
     };
 
     // A forceRemount might be triggered for debugging (on `start`), or elsewhere in Storybook.
@@ -134,15 +131,26 @@ export class Instrumenter {
 
     // Start with a clean slate before playing after a remount, and stop debugging when done.
     this.channel.on(STORY_RENDER_PHASE_CHANGED, ({ storyId, newPhase }) => {
-      const { isDebugging, forwardedException } = this.getState(storyId);
+      const { isDebugging } = this.getState(storyId);
       this.setState(storyId, { renderPhase: newPhase });
+      if (newPhase === 'preparing' && isDebugging) {
+        resetState({ storyId });
+      }
       if (newPhase === 'playing') {
         resetState({ storyId, isDebugging });
       }
       if (newPhase === 'played') {
-        this.setState(storyId, { isDebugging: false, forwardedException: undefined });
-        // Rethrow any unhandled forwarded exception so it doesn't go unnoticed.
-        if (forwardedException) throw forwardedException;
+        this.setState(storyId, {
+          isLocked: false,
+          isPlaying: false,
+          isDebugging: false,
+        });
+      }
+      if (newPhase === 'errored') {
+        this.setState(storyId, {
+          isLocked: false,
+          isPlaying: false,
+        });
       }
     });
 
@@ -156,7 +164,7 @@ export class Instrumenter {
       if (!this.getState(storyId).isDebugging) {
         this.setState(storyId, ({ calls }) => ({
           calls: [],
-          shadowCalls: calls.map((call) => ({ ...call, state: CallStates.WAITING })),
+          shadowCalls: calls.map((call) => ({ ...call, status: CallStates.WAITING })),
           isDebugging: true,
         }));
       }
@@ -169,7 +177,7 @@ export class Instrumenter {
             playUntil ||
             shadowCalls
               .slice(0, firstRowIndex)
-              .filter((call) => call.interceptable)
+              .filter((call) => call.interceptable && !call.parentId)
               .slice(-1)[0]?.id,
         };
       });
@@ -179,22 +187,21 @@ export class Instrumenter {
     };
 
     const back = ({ storyId }: { storyId: string }) => {
-      const { isDebugging } = this.getState(storyId);
-      const log = this.getLog(storyId);
-      const next = isDebugging
-        ? log.findIndex(({ state }) => state === CallStates.WAITING)
-        : log.length;
-      start({ storyId, playUntil: log[next - 2]?.callId });
+      const log = this.getLog(storyId).filter((call) => !call.parentId);
+      const last = log.reduceRight((res, item, index) => {
+        if (res >= 0 || item.status === CallStates.WAITING) return res;
+        return index;
+      }, -1);
+      start({ storyId, playUntil: log[last - 1]?.callId });
     };
 
     const goto = ({ storyId, callId }: { storyId: string; callId: Call['id'] }) => {
       const { calls, shadowCalls, resolvers } = this.getState(storyId);
       const call = calls.find(({ id }) => id === callId);
       const shadowCall = shadowCalls.find(({ id }) => id === callId);
-      if (!call && shadowCall) {
-        const nextCallId = this.getLog(storyId).find(({ state }) => state === CallStates.WAITING)
-          ?.callId;
-        if (shadowCall.id !== nextCallId) this.setState(storyId, { playUntil: shadowCall.id });
+      if (!call && shadowCall && Object.values(resolvers).length > 0) {
+        const nextId = this.getLog(storyId).find((c) => c.status === CallStates.WAITING)?.callId;
+        if (shadowCall.id !== nextId) this.setState(storyId, { playUntil: shadowCall.id });
         Object.values(resolvers).forEach((resolve) => resolve());
       } else {
         start({ storyId, playUntil: callId });
@@ -202,7 +209,14 @@ export class Instrumenter {
     };
 
     const next = ({ storyId }: { storyId: string }) => {
-      Object.values(this.getState(storyId).resolvers).forEach((resolve) => resolve());
+      const { resolvers } = this.getState(storyId);
+      if (Object.values(resolvers).length > 0) {
+        Object.values(resolvers).forEach((resolve) => resolve());
+      } else {
+        const nextId = this.getLog(storyId).find((c) => c.status === CallStates.WAITING)?.callId;
+        if (nextId) start({ storyId, playUntil: nextId });
+        else end({ storyId });
+      }
     };
 
     const end = ({ storyId }: { storyId: string }) => {
@@ -237,7 +251,7 @@ export class Instrumenter {
       acc[storyId] = Object.assign(getInitialState(), retainedState);
       return acc;
     }, {} as Record<StoryId, State>);
-    this.channel.emit(EVENTS.SYNC, []);
+    this.channel.emit(EVENTS.SYNC, { controlStates: controlsDisabled, logItems: [] });
     global.window.parent.__STORYBOOK_ADDON_INTERACTIONS_INSTRUMENTER_STATE__ = this.state;
   }
 
@@ -260,12 +274,9 @@ export class Instrumenter {
           seen.add((node as CallRef).__callId__);
         }
       });
-      if (call.interceptable && !seen.has(call.id) && !seen.has(call.parentId)) {
-        acc.unshift({ callId: call.id, state: call.state });
+      if ((call.interceptable || call.exception) && !seen.has(call.id)) {
+        acc.unshift({ callId: call.id, status: call.status, parentId: call.parentId });
         seen.add(call.id);
-        if (call.parentId) {
-          seen.add(call.parentId);
-        }
       }
       return acc;
     }, []);
@@ -321,13 +332,14 @@ export class Instrumenter {
   track(method: string, fn: Function, args: any[], options: Options) {
     const storyId: StoryId =
       args?.[0]?.__storyId__ || global.window.__STORYBOOK_PREVIEW__?.urlStore?.selection?.storyId;
-    const index = this.getState(storyId).cursor;
-    this.setState(storyId, { cursor: index + 1 });
-    const id = `${storyId} [${index}] ${method}`;
+    const { cursor, parentId } = this.getState(storyId);
+    this.setState(storyId, { cursor: cursor + 1 });
+    const id = `${parentId || storyId} [${cursor}] ${method}`;
     const { path = [], intercept = false, retain = false } = options;
     const interceptable = typeof intercept === 'function' ? intercept(method, path) : intercept;
-    const call: Call = { id, path, method, storyId, args, interceptable, retain };
-    const result = (interceptable ? this.intercept : this.invoke).call(this, fn, call, options);
+    const call: Call = { id, parentId, storyId, cursor, path, method, args, interceptable, retain };
+    const interceptOrInvoke = interceptable && !parentId ? this.intercept : this.invoke;
+    const result = interceptOrInvoke.call(this, fn, call, options);
     return this.instrument(result, { ...options, mutate: true, path: [{ __callId__: call.id }] });
   }
 
@@ -346,15 +358,14 @@ export class Instrumenter {
 
     // Instead of invoking the function, defer the function call until we continue playing.
     return new Promise((resolve) => {
-      this.channel.emit(EVENTS.LOCK, false);
       this.setState(call.storyId, ({ resolvers }) => ({
+        isLocked: false,
         resolvers: { ...resolvers, [call.id]: resolve },
       }));
     }).then(() => {
-      this.channel.emit(EVENTS.LOCK, true);
       this.setState(call.storyId, (state) => {
         const { [call.id]: _, ...resolvers } = state.resolvers;
-        return { resolvers };
+        return { isLocked: true, resolvers };
       });
       return this.invoke(fn, call, options);
     });
@@ -365,27 +376,49 @@ export class Instrumenter {
     // const { abortSignal } = global.window.__STORYBOOK_PREVIEW__ || {};
     // if (abortSignal && abortSignal.aborted) throw IGNORED_EXCEPTION;
 
-    const { parentCall, callRefsByResult, forwardedException, renderPhase } = this.getState(
-      call.storyId
-    );
-    const callWithParent = { ...call, parentId: parentCall?.id };
+    const { callRefsByResult, renderPhase } = this.getState(call.storyId);
 
-    const info: Call = {
-      ...callWithParent,
-      // Map args that originate from a tracked function call to a call reference to enable nesting.
-      // These values are often not fully serializable anyway (e.g. HTML elements).
-      args: call.args.map((arg) => {
-        if (callRefsByResult.has(arg)) {
-          return callRefsByResult.get(arg);
-        }
-        if (arg instanceof global.window.HTMLElement) {
-          const { prefix, localName, id, classList, innerText } = arg;
-          const classNames = Array.from(classList);
-          return { __element__: { prefix, localName, id, classNames, innerText } };
-        }
-        return arg;
-      }),
+    // Map complex values to a JSON-serializable representation.
+    const serializeValues = (value: any): any => {
+      if (callRefsByResult.has(value)) {
+        return callRefsByResult.get(value);
+      }
+      if (value instanceof Array) {
+        return value.map(serializeValues);
+      }
+      if (value instanceof Date) {
+        return { __date__: { value: value.toISOString() } };
+      }
+      if (value instanceof Error) {
+        const { name, message, stack } = value;
+        return { __error__: { name, message, stack } };
+      }
+      if (value instanceof RegExp) {
+        const { flags, source } = value;
+        return { __regexp__: { flags, source } };
+      }
+      if (value instanceof global.window.HTMLElement) {
+        const { prefix, localName, id, classList, innerText } = value;
+        const classNames = Array.from(classList);
+        return { __element__: { prefix, localName, id, classNames, innerText } };
+      }
+      if (typeof value === 'function') {
+        return { __function__: { name: value.name } };
+      }
+      if (typeof value === 'symbol') {
+        return { __symbol__: { description: value.description } };
+      }
+      if (
+        typeof value === 'object' &&
+        value?.constructor?.name &&
+        value?.constructor?.name !== 'Object'
+      ) {
+        return { __class__: { name: value.constructor.name } };
+      }
+      return value;
     };
+
+    const info: Call = { ...call, args: call.args.map(serializeValues) };
 
     // Mark any ancestor calls as "chained upon" so we won't attempt to defer it later.
     call.path.forEach((ref: any) => {
@@ -396,11 +429,11 @@ export class Instrumenter {
       }
     });
 
-    const handleException = (e: unknown) => {
-      if (e instanceof Error && e !== IGNORED_EXCEPTION) {
-        const { name, message, stack } = e;
-        const exception = { name, message, stack, callId: call.id };
-        this.sync({ ...info, state: CallStates.ERROR, exception });
+    const handleException = (e: any) => {
+      if (e instanceof Error) {
+        const { name, message, stack, callId = call.id } = e as Error & { callId: Call['id'] };
+        const exception = { name, message, stack, callId };
+        this.update({ ...info, status: CallStates.ERROR, exception });
 
         // Always track errors to their originating call.
         this.setState(call.storyId, (state) => ({
@@ -410,47 +443,56 @@ export class Instrumenter {
           ]),
         }));
 
-        // We need to throw to break out of the play function, but we don't want to trigger a redbox
-        // so we throw an ignoredException, which is caught and silently ignored by Storybook.
-        if (call.interceptable && e !== alreadyCompletedException) {
-          throw IGNORED_EXCEPTION;
+        // Exceptions inside callbacks should bubble up to the parent call.
+        if (call.parentId) {
+          Object.defineProperty(e, 'callId', { value: call.id });
+          throw e;
         }
 
-        // Non-interceptable calls need their exceptions forwarded to the next interceptable call.
-        // In case no interceptable call picks it up, it'll get rethrown in the "completed" phase.
-        this.setState(call.storyId, { forwardedException: e });
-        return e;
+        // We need to throw to break out of the play function, but we don't want to trigger a redbox
+        // so we throw an ignoredException, which is caught and silently ignored by Storybook.
+        if (e !== alreadyCompletedException) {
+          logger.warn(e);
+          throw IGNORED_EXCEPTION;
+        }
       }
       throw e;
     };
 
     try {
-      // An earlier, non-interceptable call might have forwarded an exception.
-      if (forwardedException) {
-        this.setState(call.storyId, { forwardedException: undefined });
-        throw forwardedException;
-      }
-
       if (renderPhase === 'played' && !call.retain) {
         throw alreadyCompletedException;
       }
 
-      const finalArgs = options.getArgs
-        ? options.getArgs(callWithParent, this.getState(call.storyId))
+      // Some libraries override function args through the `getArgs` option.
+      const actualArgs = options.getArgs
+        ? options.getArgs(call, this.getState(call.storyId))
         : call.args;
-      const result = fn(
-        // Wrap any callback functions to provide a way to access their "parent" call.
-        ...finalArgs.map((arg: any) => {
-          if (typeof arg !== 'function' || Object.keys(arg).length) return arg;
-          return (...args: any) => {
-            const prev = this.getState(call.storyId).parentCall;
-            this.setState(call.storyId, { parentCall: call });
-            const res = arg(...args);
-            this.setState(call.storyId, { parentCall: prev });
-            return res;
-          };
-        })
-      );
+
+      // Wrap any callback functions to provide a way to access their "parent" call.
+      // This is picked up in the `track` function and used for call metadata.
+      const finalArgs = actualArgs.map((arg: any) => {
+        // We only want to wrap plain functions, not objects.
+        if (typeof arg !== 'function' || Object.keys(arg).length) return arg;
+
+        return (...args: any) => {
+          // Set the cursor and parentId for calls that happen inside the callback.
+          const { cursor, parentId } = this.getState(call.storyId);
+          this.setState(call.storyId, { cursor: 0, parentId: call.id });
+          const restore = () => this.setState(call.storyId, { cursor, parentId });
+
+          // Invoke the actual callback function.
+          const res = arg(...args);
+
+          // Reset cursor and parentId to their original values before we entered the callback.
+          if (res instanceof Promise) res.then(restore, restore);
+          else restore();
+
+          return res;
+        };
+      });
+
+      const result = fn(...finalArgs);
 
       // Track the result so we can trace later uses of it back to the originating call.
       // Primitive results (undefined, null, boolean, string, number, BigInt) are ignored.
@@ -463,14 +505,14 @@ export class Instrumenter {
         }));
       }
 
-      this.sync({
+      this.update({
         ...info,
-        state: result instanceof Promise ? CallStates.ACTIVE : CallStates.DONE,
+        status: result instanceof Promise ? CallStates.ACTIVE : CallStates.DONE,
       });
 
       if (result instanceof Promise) {
         return result.then((value) => {
-          this.sync({ ...info, state: CallStates.DONE });
+          this.update({ ...info, status: CallStates.DONE });
           return value;
         }, handleException);
       }
@@ -483,13 +525,51 @@ export class Instrumenter {
 
   // Sends the call info and log to the manager.
   // Uses a 0ms debounce because this might get called many times in one tick.
-  sync(call: Call) {
+  update(call: Call) {
     clearTimeout(this.getState(call.storyId).syncTimeout);
     this.channel.emit(EVENTS.CALL, call);
-    this.setState(call.storyId, ({ calls }) => ({
-      calls: calls.concat(call),
-      syncTimeout: setTimeout(() => this.channel.emit(EVENTS.SYNC, this.getLog(call.storyId)), 0),
-    }));
+    this.setState(call.storyId, ({ calls }) => {
+      // Omit earlier calls for the same ID, which may have been superceded by a later invocation.
+      // This typically happens when calls are part of a callback which runs multiple times.
+      const callsById = calls
+        .concat(call)
+        .reduce<Record<Call['id'], Call>>((a, c) => Object.assign(a, { [c.id]: c }), {});
+      return {
+        // Calls are sorted to ensure parent calls always come before calls in their callback.
+        calls: Object.values(callsById).sort((a, b) =>
+          a.id.localeCompare(b.id, undefined, { numeric: true })
+        ),
+        syncTimeout: setTimeout(() => this.sync(call.storyId), 0),
+      };
+    });
+  }
+
+  sync(storyId: StoryId) {
+    const { isLocked, isPlaying } = this.getState(storyId);
+    const logItems: LogItem[] = this.getLog(storyId);
+    const pausedAt = logItems
+      .filter(({ parentId }) => !parentId)
+      .find((item) => item.status === CallStates.WAITING)?.callId;
+
+    const hasActive = logItems.some((item) => item.status === CallStates.ACTIVE);
+    if (debuggerDisabled || isLocked || hasActive || logItems.length === 0) {
+      this.channel.emit(EVENTS.SYNC, { controlStates: controlsDisabled, logItems });
+      return;
+    }
+
+    const hasPrevious = logItems.some((item) =>
+      [CallStates.DONE, CallStates.ERROR].includes(item.status)
+    );
+    const controlStates: ControlStates = {
+      debugger: true,
+      start: hasPrevious,
+      back: hasPrevious,
+      goto: true,
+      next: isPlaying,
+      end: isPlaying,
+    };
+
+    this.channel.emit(EVENTS.SYNC, { controlStates, logItems, pausedAt });
   }
 }
 

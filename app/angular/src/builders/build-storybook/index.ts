@@ -7,12 +7,17 @@ import {
 } from '@angular-devkit/architect';
 import { JsonObject } from '@angular-devkit/core';
 import { from, Observable, of, throwError } from 'rxjs';
-import { CLIOptions } from '@storybook/core-common';
+import type { CLIOptions } from '@storybook/core-common';
 import { catchError, map, mapTo, switchMap } from 'rxjs/operators';
+import { sync as findUpSync } from 'find-up';
+import {
+  BrowserBuilderOptions,
+  ExtraEntryPoint,
+  StylePreprocessorOptions,
+} from '@angular-devkit/build-angular';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
 import buildStandalone, { StandaloneOptions } from '@storybook/angular/standalone';
-import { BrowserBuilderOptions } from '@angular-devkit/build-angular';
 import { runCompodoc } from '../utils/run-compodoc';
 import { buildStandaloneErrorHandler } from '../utils/build-standalone-errors-handler';
 
@@ -21,10 +26,12 @@ export type StorybookBuilderOptions = JsonObject & {
   tsConfig?: string;
   compodoc: boolean;
   compodocArgs: string[];
+  styles?: ExtraEntryPoint[];
+  stylePreprocessorOptions?: StylePreprocessorOptions;
 } & Pick<
     // makes sure the option exists
     CLIOptions,
-    'staticDir' | 'outputDir' | 'configDir' | 'loglevel' | 'quiet' | 'docs'
+    'outputDir' | 'configDir' | 'loglevel' | 'quiet' | 'docs' | 'webpackStatsJson'
   >;
 
 export type StorybookBuilderOutput = JsonObject & BuilderOutput & {};
@@ -46,13 +53,34 @@ function commandBuilder(
       return runCompodoc$.pipe(mapTo({ tsConfig }));
     }),
     map(({ tsConfig }) => {
-      const { browserTarget, ...otherOptions } = options;
+      const {
+        browserTarget,
+        stylePreprocessorOptions,
+        styles,
+        configDir,
+        docs,
+        loglevel,
+        outputDir,
+        quiet,
+        webpackStatsJson,
+      } = options;
 
-      return {
-        ...otherOptions,
+      const standaloneOptions: StandaloneOptions = {
+        configDir,
+        docs,
+        loglevel,
+        outputDir,
+        quiet,
         angularBrowserTarget: browserTarget,
+        angularBuilderContext: context,
+        angularBuilderOptions: {
+          ...(stylePreprocessorOptions ? { stylePreprocessorOptions } : {}),
+          ...(styles ? { styles } : {}),
+        },
         tsConfig,
+        webpackStatsJson,
       };
+      return standaloneOptions;
     }),
     switchMap((standaloneOptions) => runInstance({ ...standaloneOptions, mode: 'static' })),
     map(() => {
@@ -74,7 +102,10 @@ async function setup(options: StorybookBuilderOptions, context: BuilderContext) 
   }
 
   return {
-    tsConfig: options.tsConfig ?? browserOptions.tsConfig ?? undefined,
+    tsConfig:
+      options.tsConfig ??
+      findUpSync('tsconfig.json', { cwd: options.configDir }) ??
+      browserOptions.tsConfig,
   };
 }
 

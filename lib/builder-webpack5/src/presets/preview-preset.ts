@@ -19,3 +19,14 @@ export const entries = async (_: unknown, options: any) => {
 
   return result;
 };
+
+export const babel = async (config: any, options: any) => ({
+  ...config,
+  overrides: [
+    ...(config?.overrides || []),
+    {
+      test: /\.(story|stories).*$/,
+      plugins: [require.resolve('babel-plugin-named-exports-order')],
+    },
+  ],
+});

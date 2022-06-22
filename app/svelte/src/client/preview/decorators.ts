@@ -1,6 +1,7 @@
-import { DecoratorFunction, StoryContext, LegacyStoryFn } from '@storybook/csf';
+import type { DecoratorFunction, StoryContext, LegacyStoryFn } from '@storybook/csf';
 import { sanitizeStoryContextUpdate } from '@storybook/store';
-import SlotDecorator from './SlotDecorator.svelte';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import SlotDecorator from '@storybook/svelte/templates/SlotDecorator.svelte';
 import { SvelteFramework } from './types';
 
 /**
@@ -66,28 +67,29 @@ function prepareStory(context: StoryContext<SvelteFramework>, story: any, origin
 export function decorateStory(storyFn: any, decorators: any[]) {
   return decorators.reduce(
     (
-      previousStoryFn: LegacyStoryFn<SvelteFramework>,
-      decorator: DecoratorFunction<SvelteFramework>
-    ) => (context: StoryContext<SvelteFramework>) => {
-      let story;
-      const decoratedStory = decorator((update) => {
-        story = previousStoryFn({
-          ...context,
-          ...sanitizeStoryContextUpdate(update),
-        });
-        return story;
-      }, context);
+        previousStoryFn: LegacyStoryFn<SvelteFramework>,
+        decorator: DecoratorFunction<SvelteFramework>
+      ) =>
+      (context: StoryContext<SvelteFramework>) => {
+        let story;
+        const decoratedStory = decorator((update) => {
+          story = previousStoryFn({
+            ...context,
+            ...sanitizeStoryContextUpdate(update),
+          });
+          return story;
+        }, context);
 
-      if (!story) {
-        story = previousStoryFn(context);
-      }
+        if (!story) {
+          story = previousStoryFn(context);
+        }
 
-      if (!decoratedStory || decoratedStory === story) {
-        return story;
-      }
+        if (!decoratedStory || decoratedStory === story) {
+          return story;
+        }
 
-      return prepareStory(context, decoratedStory, story);
-    },
+        return prepareStory(context, decoratedStory, story);
+      },
     (context: StoryContext<SvelteFramework>) => prepareStory(context, storyFn(context))
   );
 }

@@ -9,8 +9,12 @@ expect.addSnapshotSerializer({
   test: (val) => typeof val !== 'string',
 });
 
+const makeTitle = (userTitle?: string) => {
+  return userTitle || 'Default Title';
+};
+
 const parse = (code: string, includeParameters?: boolean) => {
-  const { stories, meta } = loadCsf(code, { defaultTitle: 'Default Title' }).parse();
+  const { stories, meta } = loadCsf(code, { makeTitle }).parse();
   const filtered = includeParameters
     ? stories
     : stories.map(({ id, name, parameters, ...rest }) => ({ id, name, ...rest }));
@@ -42,6 +46,32 @@ describe('CsfFile', () => {
             name: B
             parameters:
               __isArgsStory: true
+              __id: foo-bar--b
+      `);
+    });
+
+    it('exported const stories', () => {
+      expect(
+        parse(
+          dedent`
+          export default { title: 'foo/bar' };
+          const A = () => {};
+          const B = (args) => {};
+          export { A, B };
+        `,
+          true
+        )
+      ).toMatchInlineSnapshot(`
+        meta:
+          title: foo/bar
+        stories:
+          - id: foo-bar--a
+            name: A
+            parameters:
+              __id: foo-bar--a
+          - id: foo-bar--b
+            name: B
+            parameters:
               __id: foo-bar--b
       `);
     });
@@ -147,6 +177,27 @@ describe('CsfFile', () => {
       `);
     });
 
+    it('custom component id', () => {
+      expect(
+        parse(
+          dedent`
+          export default { title: 'foo/bar', id: 'custom-id' };
+          export const A = () => {};
+          export const B = () => {};
+      `
+        )
+      ).toMatchInlineSnapshot(`
+        meta:
+          title: foo/bar
+          id: custom-id
+        stories:
+          - id: custom-id--a
+            name: A
+          - id: custom-id--b
+            name: B
+      `);
+    });
+
     it('typescript', () => {
       expect(
         parse(
@@ -154,6 +205,29 @@ describe('CsfFile', () => {
           import { Meta, Story } from '@storybook/react';
           type PropTypes = {};
           export default { title: 'foo/bar/baz' } as Meta<PropTypes>;
+          export const A: Story<PropTypes> = () => <>A</>;
+          export const B: Story<PropTypes> = () => <>B</>;
+        `
+        )
+      ).toMatchInlineSnapshot(`
+        meta:
+          title: foo/bar/baz
+        stories:
+          - id: foo-bar-baz--a
+            name: A
+          - id: foo-bar-baz--b
+            name: B
+      `);
+    });
+
+    it('typescript meta var', () => {
+      expect(
+        parse(
+          dedent`
+          import { Meta, Story } from '@storybook/react';
+          type PropTypes = {};
+          const meta = { title: 'foo/bar/baz' } as Meta<PropTypes>;
+          export default meta;
           export const A: Story<PropTypes> = () => <>A</>;
           export const B: Story<PropTypes> = () => <>B</>;
         `
@@ -285,6 +359,54 @@ describe('CsfFile', () => {
               __id: foo-bar--b
       `);
     });
+
+    it('re-exported stories', () => {
+      expect(
+        parse(
+          dedent`
+          export default { title: 'foo/bar' };
+          export { default as A } from './A';
+          export { B } from './B';
+        `
+        )
+      ).toMatchInlineSnapshot(`
+        meta:
+          title: foo/bar
+        stories:
+          - id: foo-bar--a
+            name: A
+          - id: foo-bar--b
+            name: B
+      `);
+    });
+
+    it('named exports order', () => {
+      expect(
+        parse(
+          dedent`
+          export default { title: 'foo/bar' };
+          export const A = () => {};
+          export const B = (args) => {};
+          export const __namedExportsOrder = ['B', 'A'];
+        `,
+          true
+        )
+      ).toMatchInlineSnapshot(`
+        meta:
+          title: foo/bar
+        stories:
+          - id: foo-bar--b
+            name: B
+            parameters:
+              __isArgsStory: true
+              __id: foo-bar--b
+          - id: foo-bar--a
+            name: A
+            parameters:
+              __isArgsStory: false
+              __id: foo-bar--a
+      `);
+    });
   });
 
   describe('error handling', () => {
@@ -298,6 +420,7 @@ describe('CsfFile', () => {
         )
       ).toThrow('CSF: missing default export');
     });
+
     it('no metadata', () => {
       expect(() =>
         parse(
@@ -309,6 +432,7 @@ describe('CsfFile', () => {
         )
       ).toThrow('CSF: missing title/component');
     });
+
     it('dynamic titles', () => {
       expect(() =>
         parse(
@@ -320,6 +444,7 @@ describe('CsfFile', () => {
         )
       ).toThrow('CSF: unexpected dynamic title');
     });
+
     it('storiesOf calls', () => {
       expect(() =>
         parse(
@@ -333,6 +458,26 @@ describe('CsfFile', () => {
         )
       ).toThrow('CSF: unexpected storiesOf call');
     });
+
+    it('function exports', () => {
+      expect(
+        parse(
+          dedent`
+          export default { title: 'foo/bar' };
+          export function A() {}
+          export function B() {}
+      `
+        )
+      ).toMatchInlineSnapshot(`
+        meta:
+          title: foo/bar
+        stories:
+          - id: foo-bar--a
+            name: A
+          - id: foo-bar--b
+            name: B
+      `);
+    });
   });
 
   // NOTE: this does not have a public API, but we can still test it
@@ -341,7 +486,7 @@ describe('CsfFile', () => {
       const input = dedent`
         export default { title: 'foo/bar', x: 1, y: 2 };
       `;
-      const csf = loadCsf(input, { defaultTitle: 'Default Title' }).parse();
+      const csf = loadCsf(input, { makeTitle }).parse();
       expect(Object.keys(csf._metaAnnotations)).toEqual(['title', 'x', 'y']);
     });
 
@@ -354,7 +499,7 @@ describe('CsfFile', () => {
         export const B = () => {};
         B.z = 3;
     `;
-      const csf = loadCsf(input, { defaultTitle: 'Default Title' }).parse();
+      const csf = loadCsf(input, { makeTitle }).parse();
       expect(Object.keys(csf._storyAnnotations.A)).toEqual(['x', 'y']);
       expect(Object.keys(csf._storyAnnotations.B)).toEqual(['z']);
     });
@@ -372,7 +517,7 @@ describe('CsfFile', () => {
           z: 3,
         }
     `;
-      const csf = loadCsf(input, { defaultTitle: 'Default Title' }).parse();
+      const csf = loadCsf(input, { makeTitle }).parse();
       expect(Object.keys(csf._storyAnnotations.A)).toEqual(['x', 'y']);
       expect(Object.keys(csf._storyAnnotations.B)).toEqual(['z']);
     });
@@ -467,6 +612,25 @@ describe('CsfFile', () => {
               __isArgsStory: true
               __id: foo-bar--a
       `);
+    });
+
+    it('Object export with storyName', () => {
+      const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation();
+
+      parse(
+        dedent`
+        export default { title: 'foo/bar' };
+        export const A = {
+          storyName: 'Apple'
+        }
+      `,
+        true
+      );
+
+      expect(consoleWarnMock).toHaveBeenCalledWith(
+        'Unexpected usage of "storyName" in "A". Please use "name" instead.'
+      );
+      consoleWarnMock.mockRestore();
     });
   });
 });

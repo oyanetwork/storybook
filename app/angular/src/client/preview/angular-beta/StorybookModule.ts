@@ -7,7 +7,7 @@ import deprecate from 'util-deprecate';
 import { ICollection, StoryFnAngularReturnType } from '../types';
 import { storyPropsProvider } from './StorybookProvider';
 import { isComponentAlreadyDeclaredInModules } from './utils/NgModulesAnalyzer';
-import { isDeclarable } from './utils/NgComponentAnalyzer';
+import { isDeclarable, isStandaloneComponent } from './utils/NgComponentAnalyzer';
 import { createStorybookWrapperComponent } from './StorybookWrapperComponent';
 import { computesTemplateFromComponent } from './ComputesTemplateFromComponent';
 
@@ -61,6 +61,7 @@ export const getStorybookModuleMetadata = (
     props
   );
 
+  const isStandalone = isStandaloneComponent(component);
   // Look recursively (deep) if the component is not already declared by an import module
   const requiresComponentDeclaration =
     isDeclarable(component) &&
@@ -68,7 +69,8 @@ export const getStorybookModuleMetadata = (
       component,
       moduleMetadata.declarations,
       moduleMetadata.imports
-    );
+    ) &&
+    !isStandalone;
 
   return {
     declarations: [
@@ -76,7 +78,11 @@ export const getStorybookModuleMetadata = (
       ComponentToInject,
       ...(moduleMetadata.declarations ?? []),
     ],
-    imports: [BrowserModule, ...(moduleMetadata.imports ?? [])],
+    imports: [
+      BrowserModule,
+      ...(isStandalone ? [component] : []),
+      ...(moduleMetadata.imports ?? []),
+    ],
     providers: [storyPropsProvider(storyProps$), ...(moduleMetadata.providers ?? [])],
     entryComponents: [...(moduleMetadata.entryComponents ?? [])],
     schemas: [...(moduleMetadata.schemas ?? [])],

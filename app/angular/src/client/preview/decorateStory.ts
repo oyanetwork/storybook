@@ -1,26 +1,25 @@
-import { DecoratorFunction, LegacyStoryFn, StoryContext } from '@storybook/csf';
+import type { DecoratorFunction, LegacyStoryFn, StoryContext } from '@storybook/csf';
 import { sanitizeStoryContextUpdate } from '@storybook/store';
 import { computesTemplateFromComponent } from './angular-beta/ComputesTemplateFromComponent';
 
-import { AngularFramework } from './types-6-0';
+import type { AngularFramework } from './types-6-0';
 
 export default function decorateStory(
   mainStoryFn: LegacyStoryFn<AngularFramework>,
   decorators: DecoratorFunction<AngularFramework>[]
 ): LegacyStoryFn<AngularFramework> {
   const returnDecorators = [cleanArgsDecorator, ...decorators].reduce(
-    (previousStoryFn: LegacyStoryFn<AngularFramework>, decorator) => (
-      context: StoryContext<AngularFramework>
-    ) => {
-      const decoratedStory = decorator((update) => {
-        return previousStoryFn({
-          ...context,
-          ...sanitizeStoryContextUpdate(update),
-        });
-      }, context);
+    (previousStoryFn: LegacyStoryFn<AngularFramework>, decorator) =>
+      (context: StoryContext<AngularFramework>) => {
+        const decoratedStory = decorator((update) => {
+          return previousStoryFn({
+            ...context,
+            ...sanitizeStoryContextUpdate(update),
+          });
+        }, context);
 
-      return decoratedStory;
-    },
+        return decoratedStory;
+      },
     (context) => prepareMain(mainStoryFn(context), context)
   );
 

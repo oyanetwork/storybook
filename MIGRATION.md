@@ -1,6 +1,20 @@
 <h1>Migration</h1>
 
+- [From version 6.4.x to 6.5.0](#from-version-64x-to-650)
+  - [Vue 3 upgrade](#vue-3-upgrade)
+  - [React18 new root API](#react18-new-root-api)
+  - [Renamed isToolshown to showToolbar](#renamed-istoolshown-to-showtoolbar)
+  - [Deprecated register.js](#deprecated-registerjs)
+  - [Dropped support for addon-actions addDecorators](#dropped-support-for-addon-actions-adddecorators)
+  - [Vite builder renamed](#vite-builder-renamed)
+  - [Docs framework refactor for React](#docs-framework-refactor-for-react)
+  - [Opt-in MDX2 support](#opt-in-mdx2-support)
+  - [CSF3 auto-title improvements](#csf3-auto-title-improvements)
+    - [Auto-title filename case](#auto-title-filename-case)
+    - [Auto-title redundant filename](#auto-title-redundant-filename)
+    - [Auto-title always prefixes](#auto-title-always-prefixes)
 - [From version 6.3.x to 6.4.0](#from-version-63x-to-640)
+  - [Automigrate](#automigrate)
   - [CRA5 upgrade](#cra5-upgrade)
   - [CSF3 enabled](#csf3-enabled)
     - [Optional titles](#optional-titles)
@@ -10,11 +24,16 @@
     - [Behavioral differences](#behavioral-differences)
     - [Main.js framework field](#mainjs-framework-field)
     - [Using the v7 store](#using-the-v7-store)
-    - [V7-style story sort](#v7-style-story-sort)
-    - [V7 Store API changes for addon authors](#v7-store-api-changes-for-addon-authors)
+    - [v7-style story sort](#v7-style-story-sort)
+    - [v7 Store API changes for addon authors](#v7-store-api-changes-for-addon-authors)
+    - [Storyshots compatibility in the v7 store](#storyshots-compatibility-in-the-v7-store)
+  - [Emotion11 quasi-compatibility](#emotion11-quasi-compatibility)
   - [Babel mode v7](#babel-mode-v7)
   - [Loader behavior with args changes](#loader-behavior-with-args-changes)
-  - [Angular component parameter removed](#angular-component-parameter-removed)
+  - [6.4 Angular changes](#64-angular-changes)
+    - [SB Angular builder](#sb-angular-builder)
+    - [Angular13](#angular13)
+    - [Angular component parameter removed](#angular-component-parameter-removed)
   - [6.4 deprecations](#64-deprecations)
     - [Deprecated --static-dir CLI flag](#deprecated---static-dir-cli-flag)
 - [From version 6.2.x to 6.3.0](#from-version-62x-to-630)
@@ -182,23 +201,207 @@
   - [Packages renaming](#packages-renaming)
   - [Deprecated embedded addons](#deprecated-embedded-addons)
 
+## From version 6.4.x to 6.5.0
+
+### Vue 3 upgrade
+
+Storybook 6.5 supports Vue 3 out of the box when you install it fresh. However, if you're upgrading your project from a previous version, you'll need to [follow the steps for opting-in to webpack 5](#webpack-5).
+
+### React18 new root API
+
+React 18 introduces a [new root API](https://reactjs.org/blog/2022/03/08/react-18-upgrade-guide.html#updates-to-client-rendering-apis). Starting in 6.5, Storybook for React will auto-detect your react version and use the new root API automatically if you're on React18.
+
+If you wish to opt out of the new root API, set the `reactOptions.legacyRootApi` flag in your `.storybook/main.js` config:
+
+```js
+module.exports = {
+  reactOptions: { legacyRootApi: true },
+};
+```
+
+### Renamed isToolshown to showToolbar
+
+Storybook's [manager API](docs/addons/addons-api.md) has deprecated the `isToolshown` option (to show/hide the toolbar) and renamed it to `showToolbar` for consistency with other similar UI options.
+
+Example:
+
+```js
+// .storybook/manager.js
+import { addons } from '@storybook/addons';
+
+addons.setConfig({
+  showToolbar: false,
+});
+```
+
+### Deprecated register.js
+
+In ancient versions of Storybook, addons were registered by referring to `addon-name/register.js`. This is going away in SB7.0. Instead you should just add `addon-name` to the `addons` array in `.storybook/main.js`.
+
+Before:
+
+```js
+module.exports = { addons: ['my-addon/register.js'] };
+```
+
+After:
+
+```js
+module.exports = { addons: ['my-addon'] };
+```
+
+### Dropped support for addon-actions addDecorators
+
+Prior to SB6.5, `addon-actions` provided an option called `addDecorators`. In SB6.5, decorators are applied always. This is technically a breaking change, so if this affects you please file an issue in Github and we can consider reverting this in a patch release.
+
+### Vite builder renamed
+
+SB6.5 renames Storybook's [Vite builder](https://github.com/storybookjs/builder-vite) from `storybook-builder-vite` to `@storybook/builder-vite`. This move is part of a larger effort to improve Vite support in Storybook.
+
+Storybook's `automigrate` command can migrate for you. To manually migrate:
+
+1. Remove `storybook-builder-vite` from your `package.json` dependencies
+2. Install `@storybook/builder-vite`
+3. Update your `core.builder` setting in `.storybook/main.js` to `@storybook/builder-vite`.
+
+### Docs framework refactor for React
+
+SB6.5 moves framework specializations (e.g. ArgType inference, dynamic snippet rendering) out of `@storybook/addon-docs` and into the specific framework packages to which they apply (e.g. `@storybook/react`).
+
+This change should not require any specific migrations on your part if you are using the docs addon as described in the documentation. However, if you are using `react-docgen` or `react-docgen-typescript` information in some custom way outside of `addon-docs`, you should be aware of this change.
+
+In SB6.4, `@storybook/react` added `react-docgen` to its babel settings and `react-docgen-typescript` to its webpack settings. In SB6.5, this only happens if you are using `addon-docs` or `addon-controls`, either directly or indirectly through `addon-essentials`. If you're not using either of those addons, but require that information for some other addon, please configure that manually in your `.storybook/main.js` configuration. You can see the docs configuration here: https://github.com/storybookjs/storybook/blob/next/app/react/src/server/framework-preset-react-docs.ts
+
+### Opt-in MDX2 support
+
+SB6.5 adds experimental opt-in support for MDXv2. To install:
+
+```sh
+yarn add @storybook/mdx2-csf -D
+```
+
+Then add the `previewMdx2` feature flag to your `.storybook/main.js` config:
+
+```js
+module.exports = {
+  features: {
+    previewMdx2: true,
+  },
+};
+```
+
+### CSF3 auto-title improvements
+
+SB 6.4 introduced experimental "auto-title", in which a story's location in the sidebar (aka `title`) can be automatically inferred from its location on disk. For example, the file `atoms/Button.stories.js` might result in the title `Atoms/Button`.
+
+We've made two improvements to Auto-title based on user feedback:
+
+- Auto-title preserves filename case
+- Auto-title removes redundant filenames from the path
+
+#### Auto-title filename case
+
+SB 6.4's implementation of auto-title ran `startCase` on each path component. For example, the file `atoms/MyButton` would be transformed to `Atoms/My Button`.
+
+We've changed this in SB 6.5 to preserve the filename case, so that instead it the same file would result in the title `atoms/MyButton`. The rationale is that this gives more control to users about what their auto-title will be.
+
+This might be considered a breaking change. However, we feel justified to release this in 6.5 because:
+
+1. We consider it a bug in the initial auto-title implementation
+2. CSF3 and the auto-title feature are experimental, and we reserve the right to make breaking changes outside of semver (tho we try to avoid it)
+
+If you want to restore the old titles in the UI, you can customize your sidebar with the following code snippet in `.storybook/manager.js`:
+
+```js
+import { addons } from '@storybook/addons';
+import startCase from 'lodash/startCase';
+
+addons.setConfig({
+  sidebar: {
+    renderLabel: ({ name, type }) => (type === 'story' ? name : startCase(name)),
+  },
+});
+```
+
+#### Auto-title redundant filename
+
+The heuristic failed in the common scenario in which each component gets its own directory, e.g. `atoms/Button/Button.stories.js`, which would result in the redundant title `Atoms/Button/Button`. Alternatively, `atoms/Button/index.stories.js` would result in `Atoms/Button/Index`.
+
+To address this problem, 6.5 introduces a new heuristic to removes the filename if it matches the directory name or `index`. So `atoms/Button/Button.stories.js` and `atoms/Button/index.stories.js` would both result in the title `Atoms/Button` (or `atoms/Button` if `autoTitleFilenameCase` is set, see above).
+
+Since CSF3 is experimental, we are introducing this technically breaking change in a minor release. If you desire the old structure, you can manually specify the title in file. For example:
+
+```js
+// atoms/Button/Button.stories.js
+export default { title: 'Atoms/Button/Button' };
+```
+
+#### Auto-title always prefixes
+
+When the user provides a `prefix` in their `main.js` `stories` field, it now prefixes all titles to matching stories, whereas in 6.4 and earlier it only prefixed auto-titles.
+
+Consider the following example:
+
+```js
+// main.js
+module.exports = {
+  stories: [{ directory: '../src', titlePrefix: 'Custom' }]
+}
+
+// ../src/NoTitle.stories.js
+export default { component: Foo };
+
+// ../src/Title.stories.js
+export default { component: Bar, title: 'Bar' }
+```
+
+In 6.4, the final titles would be:
+
+- `NoTitle.stories.js` => `Custom/NoTitle`
+- `Title.stories.js` => `Bar`
+
+In 6.5, the final titles would be:
+
+- `NoTitle.stories.js` => `Custom/NoTitle`
+- `Title.stories.js` => `Custom/Bar`
+
+<!-- markdown-link-check-disable -->
 ## From version 6.3.x to 6.4.0
+
+### Automigrate
+
+Automigrate is a new 6.4 feature that provides zero-config upgrades to your dependencies, configurations, and story files.
+
+Each automigration analyzes your project, and if it's is applicable, propose a change alongside relevant documentation. If you accept the changes, the automigration will update your files accordingly.
+
+For example, if you're in a webpack5 project but still use Storybook's default webpack4 builder, the automigration can detect this and propose an upgrade. If you opt-in, it will install the webpack5 builder and update your `main.js` configuration automatically.
+
+You can run the existing suite of automigrations to see which ones apply to your project. This won't update any files unless you accept the changes:
+
+```
+
+npx sb@next automigrate
+
+```
+
+The automigration suite also runs when you create a new project (`sb init`) or when you update storybook (`sb upgrade`).
 
 ### CRA5 upgrade
 
-Storybook 6.3 supports CRA5 out of the box when you install it fresh. However, if you're upgrading your project from a previous version, you'll need to
-upgrade the configuration. You can do this automatically by running:
+Storybook 6.3 supports CRA5 out of the box when you install it fresh. However, if you're upgrading your project from a previous version, you'll need to upgrade the configuration. You can do this automatically by running:
 
 ```
-npx sb@next fix
+
+npx sb@next automigrate
+
 ```
 
 Or you can do the following steps manually to force Storybook to use webpack 5 for building your project:
 
 ```shell
-yarn add @storybook/builder-webpack5@next @storybook/manager-webpack5 --dev
+yarn add @storybook/builder-webpack5 @storybook/manager-webpack5 --dev
 # Or
-npm install @storybook/builder-webpack5@next @storybook/manager-webpack5 --save-dev
+npm install @storybook/builder-webpack5 @storybook/manager-webpack5 --save-dev
 ```
 
 Then edit your `.storybook/main.js` config:
@@ -249,7 +452,7 @@ export default {
   title: 'Components/Atoms/Button',
 };
 
-// ✅ undefined 6.3 KO / 7.0 OK
+// ✅ undefined 6.3 OK / 7.0 OK
 export default {
   component: Button,
 };
@@ -341,7 +544,7 @@ module.exports = {
 
 NOTE: `features.storyStoreV7` implies `features.buildStoriesJson` and has the same limitations.
 
-#### V7-style story sort
+#### v7-style story sort
 
 If you've written a custom `storySort` function, you'll need to rewrite it for V7.
 
@@ -377,12 +580,45 @@ function storySort(a, b) {
 },
 ```
 
-#### V7 Store API changes for addon authors
+#### v7 Store API changes for addon authors
 
 The Story Store in v7 mode is async, so synchronous story loading APIs no longer work. In particular:
 
 - `store.fromId()` has been replaced by `store.loadStory()`, which is async (i.e. returns a `Promise` you will need to await).
 - `store.raw()/store.extract()` and friends that list all stories require a prior call to `store.cacheAllCSFFiles()` (which is async). This will load all stories, and isn't generally a good idea in an addon, as it will force the whole store to load.
+
+#### Storyshots compatibility in the v7 store
+
+Storyshots is not currently compatible with the v7 store. However, you can use the following workaround to opt-out of the v7 store when running storyshots; in your `main.js`:
+
+```js
+module.exports = {
+  features: {
+    storyStoreV7: !global.navigator?.userAgent?.match?.('jsdom'),
+  },
+};
+```
+
+There are some caveats with the above approach:
+
+- The code path in the v6 store is different to the v7 store and your mileage may vary in identical behavior. Buyer beware.
+- The story sort API [changed between the stores](#v7-style-story-sort). If you are using a custom story sort function, you will need to ensure it works in both contexts (perhaps using the check `global.navigator.userAgent.match('jsdom')`).
+
+### Emotion11 quasi-compatibility
+
+Now that the web is moving to Emotion 11 for styling, popular libraries like MUI5 and ChakraUI are breaking with Storybook 6.3 which only supports emotion@10.
+
+Unfortunately we're unable to upgrade Storybook to Emotion 11 without a semver major release, and we're not ready for that. So, as a workaround, we've created a feature flag which opts-out of the previous behavior of pinning the Emotion version to v10. To enable this workaround, add the following to your `.storybook/main.js` config:
+
+```js
+module.exports = {
+  features: {
+    emotionAlias: false,
+  },
+};
+```
+
+Setting this should unlock theming for emotion11-based libraries in Storybook 6.4.
 
 ### Babel mode v7
 
@@ -419,7 +655,60 @@ This will create a `.babelrc.json` file. This file includes a bunch of babel plu
 
 In 6.4 the behavior of loaders when arg changes occurred was tweaked so loaders do not re-run. Instead the previous value of the loader is passed to the story, irrespective of the new args.
 
-### Angular component parameter removed
+### 6.4 Angular changes
+
+#### SB Angular builder
+
+Since SB6.3, Storybook for Angular supports a builder configuration in your project's `angular.json`. This provides an Angular-style configuration for running and building your Storybook. The full builder documentation will be shown in the [main documentation page](https://storybook.js.org/docs/angular) soon, but for now you can check out an example here:
+
+- `start-storybook`: [example](https://github.com/storybookjs/storybook/blob/next/examples/angular-cli/angular.json#L78) [schema](https://github.com/storybookjs/storybook/blob/next/app/angular/src/builders/start-storybook/schema.json)
+- `build-storybook`: [example](https://github.com/storybookjs/storybook/blob/next/examples/angular-cli/angular.json#L86) [schema](https://github.com/storybookjs/storybook/blob/next/app/angular/src/builders/build-storybook/schema.json)
+
+#### Angular13
+
+Angular 13 introduces breaking changes that require updating your Storybook configuration if you are migrating from a previous version of Angular.
+
+Most notably, the documented way of including global styles is no longer supported by Angular13. Previously you could write the following in your `.storybook/preview.js` config:
+
+```
+import '!style-loader!css-loader!sass-loader!./styles.scss';
+```
+
+If you use Angular 13 and above, you should use the builder configuration instead:
+
+```json
+   "my-default-project": {
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:browser",
+          "options": {
+            "styles": ["src/styles.css", "src/styles.scss"],
+          }
+        }
+      },
+   },
+```
+
+If you need storybook-specific styles separate from your app, you can configure the styles in the [SB Angular builder](#sb-angular-builder), which completely overrides your project's styles:
+
+```json
+      "storybook": {
+        "builder": "@storybook/angular:start-storybook",
+        "options": {
+          "browserTarget": "my-default-project:build",
+          "styles": [".storybook/custom-styles.scss"],
+        },
+      }
+```
+
+Then, once you've set this up, you should run Storybook through the builder:
+
+```sh
+ng run my-default-project:storybook
+ng run my-default-project:build-storybook
+```
+
+#### Angular component parameter removed
 
 In SB6.3 and earlier, the `default.component` metadata was implemented as a parameter, meaning that stories could set `parameters.component` to override the default export. This was an internal implementation that was never documented, but it was mistakenly used in some Angular examples.
 
@@ -465,7 +754,29 @@ The `--static-dir` flag has been deprecated and will be removed in Storybook 7.0
 
 ### Webpack 5
 
-Storybook 6.3 brings opt-in support for building both your project and the manager UI with webpack 5. To do so:
+Storybook 6.3 brings opt-in support for building both your project and the manager UI with webpack 5. To do so, there are two ways:
+
+1 - Upgrade command
+
+If you're upgrading your Storybook version, run this command, which will both upgrade your dependencies but also detect whether you should migrate to webpack5 builders and apply the changes automatically:
+
+```shell
+npx sb upgrade
+```
+
+2 - Automigrate command
+
+If you don't want to change your Storybook version but want Storybook to detect whether you should migrate to webpack5 builders and apply the changes automatically:
+
+```shell
+npx sb automigrate
+```
+
+3 - Manually
+
+If either methods did not work or you just want to proceed manually, do the following steps:
+
+Install the dependencies:
 
 ```shell
 yarn add @storybook/builder-webpack5 @storybook/manager-webpack5 --dev
@@ -482,6 +793,8 @@ module.exports = {
   },
 };
 ```
+
+> NOTE: If you're using `@storybook/preset-create-react-app` make sure to update it to version 4.0.0 as well.
 
 #### Fixing hoisting issues
 
@@ -505,6 +818,17 @@ Because Storybook uses `webpack@4` as the default, it's possible for the wrong v
 yarn add webpack@5 --dev
 # Or
 npm install webpack@5 --save-dev
+```
+
+Alternatively or additionally you might need to add a resolution to your package.json to ensure that a consistent webpack version is provided across all of storybook packages. Replacing the {app} with the app (react, vue, etc.) that you're using:
+
+```js
+// package.json
+...
+resolutions: {
+  "@storybook/{app}/webpack": "^5"
+}
+...
 ```
 
 ### Angular 12 upgrade
@@ -1920,7 +2244,7 @@ Theming has been rewritten in v5. If you used theming in v4, please consult the 
 
 ### Story hierarchy defaults
 
-Storybook's UI contains a hierarchical tree of stories that can be configured by `hierarchySeparator` and `hierarchyRootSeparator` [options](./addons/options/README.md).
+Storybook's UI contains a hierarchical tree of stories that can be configured by `hierarchySeparator` and `hierarchyRootSeparator` [options](https://github.com/storybookjs/deprecated-addons/blob/master/MIGRATION.md#options-addon-deprecated).
 
 In Storybook 4.x the values defaulted to `null` for both of these options, so that there would be no hierarchy by default.
 
@@ -2585,3 +2909,4 @@ If you **are** using these addons, it takes two steps to migrate:
   import { action } from '@storybook/addon-actions';
   import { linkTo } from '@storybook/addon-links';
   ```
+<!-- markdown-link-check-enable -->

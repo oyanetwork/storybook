@@ -2,7 +2,7 @@
 
 Storybook addon for inspecting Jest unit test results.
 
-[Framework Support](https://github.com/storybookjs/storybook/blob/main/ADDONS_SUPPORT.md)
+[Framework Support](https://storybook.js.org/docs/react/api/frameworks-feature-support)
 
 [![Storybook Jest Addon Demo](https://raw.githubusercontent.com/storybookjs/storybook/next/addons/jest/docs/storybook-addon-jest.gif)](http://storybooks-official.netlify.com/?selectedKind=Addons%7Cjest&selectedStory=withTests&full=0&addons=1&stories=1&panelRight=0&addonPanel=storybook%2Ftests%2Fpanel)
 
@@ -46,7 +46,7 @@ You may want to add the result file to `.gitignore`, since it's a generated file
 
 But much like lockfiles and snapshots, checking-in generated files can have certain advantages as well. It's up to you.
 We recommend to **do** check in the test results file so starting Storybook from a clean git clone doesn't require running all tests first,
-but this can mean you'll encounter merge conflicts on this file in the future (_re-generating this file is very similar to re-generating lockfiles and snapshots_). 
+but this can mean you'll encounter merge conflicts on this file in the future (_re-generating this file is very similar to re-generating lockfiles and snapshots_).
 
 ### Generating the test results
 
@@ -56,7 +56,13 @@ Ensure the generated test-results file exists before you start Storybook. During
 npm run test:generate-output -- --watch
 ```
 
-This change will then be HMR (hot module reloaded) using Webpack and displayed by the addon.
+And in the jest config, add `jest-test-results.json` to `modulePathIgnorePatterns` to avoid an infinite loop.
+
+```js
+modulePathIgnorePatterns: ['node_modules', 'jest-test-results.json'],
+```
+
+This change will then be HMR (hot module reloaded) using webpack and displayed by this addon.
 
 If you want to pre-run Jest automatically during development or a static build, you may need to consider that if your tests fail, the script receives a non-0 exit code and will exit.
 You could create a `prebuild:storybook` npm script, which will never fail by appending `|| true`:
@@ -90,7 +96,7 @@ import results from '../.jest-test-results.json';
 import { withTests } from '@storybook/addon-jest';
 
 export default {
- component: MyComponent,
+  component: MyComponent,
   title: 'MyComponent',
   decorators: [withTests({ results })],
 };
@@ -101,17 +107,17 @@ You can also add multiple tests results within your story by including the `jest
 ```js
 // MyComponent.stories.js |  MyComponent.stories.jsx
 
-import MyComponent from './MyComponent'; 
+import MyComponent from './MyComponent';
 
-import results from '../.jest-test-results.json'; 
+import results from '../.jest-test-results.json';
 
-import { withTests } from '@storybook/addon-jest'; 
+import { withTests } from '@storybook/addon-jest';
 
-export default { 
-  component: MyComponent, 
-  title: 'MyComponent', 
+export default {
+  component: MyComponent,
+  title: 'MyComponent',
   decorators: [withTests({ results })],
-}; 
+};
 
 const Template = (args) => <MyComponent {....args} />;
 
@@ -126,13 +132,13 @@ Default.parameters = {
 
 ### Global level
 
-To avoid importing the results of the tests in each story, you can update 
+To avoid importing the results of the tests in each story, you can update
 your [`.storybook/preview.js`](https://storybook.js.org/docs/react/configure/overview#configure-story-rendering) and include a decorator allowing you to display the results only for the stories that have the `jest` parameter defined:
 
 ```js
 // .storybook/preview.js
 
-import { withTests } from "@storybook/addon-jest";
+import { withTests } from '@storybook/addon-jest';
 
 import results from '../.jest-test-results.json';
 
@@ -140,7 +146,7 @@ export const decorators = [
   withTests({
     results,
   }),
-]; 
+];
 ```
 
 Then in your story file:
@@ -162,7 +168,7 @@ Default.args={
   text: 'Jest results in Storybook',
 };
 Default.parameters = {
-  jest: ['MyComponent.test.js'],
+  jest: 'MyComponent.test.js',
 };
 ```
 
@@ -185,7 +191,7 @@ const Template = (args) => <MyComponent {...args} />;
 
 export const Default = Template.bind({});
 
-Default.args={
+Default.args = {
   text: 'Jest results in Storybook',
 };
 Default.parameters = {
@@ -207,7 +213,7 @@ import results from '../.jest-test-results.json';
 export const decorators = [
   withTests({
     results,
-    filesExt: "((\\.specs?)|(\\.tests?))?(\\.ts)?$",
+    filesExt: '((\\.specs?)|(\\.tests?))?(\\.ts)?$',
   }),
 ];
 ```
@@ -230,7 +236,7 @@ const Template: Story<MyComponent> = (args: MyComponent) => ({
 
 export const Default = Template.bind({});
 Default.parameters = {
-  jest: ['MyComponent.component'],
+  jest: 'MyComponent.component',
 };
 ```
 

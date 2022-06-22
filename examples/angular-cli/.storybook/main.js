@@ -16,6 +16,8 @@ module.exports = {
   ],
   core: {
     builder: 'webpack4',
+    channelOptions: { allowFunction: false, maxDepth: 10 },
+    disableTelemetry: true,
   },
   angularOptions: {
     enableIvy: true,
@@ -40,4 +42,7 @@ module.exports = {
     },
   },
   staticDirs: ['../src/assets'],
+  features: {
+    buildStoriesJson: true,
+  },
 };

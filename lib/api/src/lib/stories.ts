@@ -1,9 +1,11 @@
+import memoize from 'memoizerific';
 import React from 'react';
 import deprecate from 'util-deprecate';
 import dedent from 'ts-dedent';
 import mapValues from 'lodash/mapValues';
 import countBy from 'lodash/countBy';
-import {
+import global from 'global';
+import type {
   StoryId,
   ComponentTitle,
   StoryKind,
@@ -11,17 +13,20 @@ import {
   Args,
   ArgTypes,
   Parameters,
-  sanitize,
 } from '@storybook/csf';
+import { sanitize } from '@storybook/csf';
 
 import { combineParameters } from '../index';
 import merge from './merge';
-import { Provider } from '../modules/provider';
-import { ViewMode } from '../modules/addons';
+import type { Provider } from '../modules/provider';
+import type { ViewMode } from '../modules/addons';
+
+const { FEATURES } = global;
 
 export type { StoryId };
 
 export interface Root {
+  type: 'root';
   id: StoryId;
   depth: 0;
   name: string;
@@ -35,6 +40,7 @@ export interface Root {
 }
 
 export interface Group {
+  type: 'group' | 'component';
   id: StoryId;
   depth: number;
   name: string;
@@ -53,6 +59,7 @@ export interface Group {
 }
 
 export interface Story {
+  type: 'story' | 'docs';
   id: StoryId;
   depth: number;
   parent: StoryId;
@@ -115,6 +122,9 @@ export interface StoryIndexStory {
   name: StoryName;
   title: ComponentTitle;
   importPath: Path;
+
+  // v2 or v2-compatible story index includes this
+  parameters?: Parameters;
 }
 export interface StoryIndex {
   v: number;
@@ -164,7 +174,7 @@ export const denormalizeStoryParameters = ({
     parameters: combineParameters(
       globalParameters,
       kindParameters[storyData.kind],
-      (storyData.parameters as unknown) as Parameters
+      storyData.parameters as unknown as Parameters
     ),
   }));
 };
@@ -176,16 +186,19 @@ export const transformStoryIndexToStoriesHash = (
   { provider }: { provider: Provider }
 ): StoriesHash => {
   const countByTitle = countBy(Object.values(index.stories), 'title');
-  const input = Object.entries(index.stories).reduce((acc, [id, { title, name, importPath }]) => {
-    const docsOnly = name === 'Page' && countByTitle[title] === 1;
-    acc[id] = {
-      id,
-      kind: title,
-      name,
-      parameters: { fileName: importPath, options: {}, docsOnly },
-    };
-    return acc;
-  }, {} as StoriesRaw);
+  const input = Object.entries(index.stories).reduce(
+    (acc, [id, { title, name, importPath, parameters }]) => {
+      const docsOnly = name === 'Page' && countByTitle[title] === 1;
+      acc[id] = {
+        id,
+        kind: title,
+        name,
+        parameters: { fileName: importPath, options: {}, docsOnly, ...parameters },
+      };
+      return acc;
+    },
+    {} as StoriesRaw
+  );
 
   return transformStoriesRawToStoriesHash(input, { provider, prepared: false });
 };
@@ -207,7 +220,7 @@ export const transformStoriesRawToStoriesHash = (
     }
 
     const setShowRoots = typeof showRoots !== 'undefined';
-    if (usesOldHierarchySeparator && !setShowRoots) {
+    if (usesOldHierarchySeparator && !setShowRoots && FEATURES?.warnOnLegacyHierarchySeparator) {
       warnChangedDefaultHierarchySeparators();
     }
 
@@ -230,6 +243,7 @@ export const transformStoriesRawToStoriesHash = (
 
       if (root.length && index === 0) {
         list.push({
+          type: 'root',
           id,
           name,
           depth: index,
@@ -242,6 +256,7 @@ export const transformStoriesRawToStoriesHash = (
         });
       } else {
         list.push({
+          type: 'group',
           id,
           name,
           parent,
@@ -274,6 +289,7 @@ export const transformStoriesRawToStoriesHash = (
     });
 
     acc[item.id] = {
+      type: item.parameters?.docsOnly ? 'docs' : 'story',
       ...item,
       depth: rootAndGroups.length,
       parent: rootAndGroups[rootAndGroups.length - 1].id,
@@ -294,7 +310,10 @@ export const transformStoriesRawToStoriesHash = (
       const { children } = item;
       if (children) {
         const childNodes = children.map((id) => storiesHashOutOfOrder[id]) as (Story | Group)[];
-        acc[item.id].isComponent = childNodes.every((childNode) => childNode.isLeaf);
+        if (childNodes.every((childNode) => childNode.isLeaf)) {
+          acc[item.id].isComponent = true;
+          acc[item.id].type = 'component';
+        }
         childNodes.forEach((childNode) => addItem(acc, childNode));
       }
     }
@@ -324,3 +343,17 @@ export function isStory(item: Item): item is Story {
   }
   return false;
 }
+
+export const getComponentLookupList = memoize(1)((hash: StoriesHash) => {
+  return Object.entries(hash).reduce((acc, i) => {
+    const value = i[1];
+    if (value.isComponent) {
+      acc.push([...i[1].children]);
+    }
+    return acc;
+  }, [] as StoryId[][]);
+});
+
+export const getStoriesLookupList = memoize(1)((hash: StoriesHash) => {
+  return Object.keys(hash).filter((k) => !(hash[k].children || Array.isArray(hash[k])));
+});

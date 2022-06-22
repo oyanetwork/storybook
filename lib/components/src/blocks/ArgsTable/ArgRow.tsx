@@ -6,9 +6,9 @@ import { ArgType, Args, TableAnnotation } from './types';
 import { ArgJsDoc } from './ArgJsDoc';
 import { ArgValue } from './ArgValue';
 import { ArgControl, ArgControlProps } from './ArgControl';
-import { codeCommon } from '../../typography/shared';
+import { codeCommon } from '../../typography/lib/common';
 
-export interface ArgRowProps {
+interface ArgRowProps {
   row: ArgType;
   arg: any;
   updateArgs?: (args: Args) => void;

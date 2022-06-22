@@ -4,7 +4,7 @@ import boxen from 'boxen';
 import dedent from 'ts-dedent';
 import Table from 'cli-table3';
 import prettyTime from 'pretty-hrtime';
-import { VersionCheck } from '@storybook/core-common';
+import type { VersionCheck } from '@storybook/core-common';
 import { createUpdateMessage } from './update-check';
 
 export function outputStartupInformation(options: {
@@ -16,15 +16,8 @@ export function outputStartupInformation(options: {
   managerTotalTime?: [number, number];
   previewTotalTime?: [number, number];
 }) {
-  const {
-    updateInfo,
-    version,
-    name,
-    address,
-    networkAddress,
-    managerTotalTime,
-    previewTotalTime,
-  } = options;
+  const { updateInfo, version, name, address, networkAddress, managerTotalTime, previewTotalTime } =
+    options;
 
   const updateMessage = createUpdateMessage(updateInfo, version);
 

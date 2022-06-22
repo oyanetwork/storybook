@@ -1,12 +1,28 @@
 ```js
-// Button.stories.js | Button.stories.jsx | Button.stories.ts | Button.stories.tsx
+// Button.stories.js|jsx|ts|tsx
 
-export const CustomSource = () => Template.bind({});
+import { Button } from './Button';
 
+export default {
+  /* 👇 The title prop is optional.
+  * See https://storybook.js.org/docs/react/configure/overview#configure-story-loading
+  * to learn how to generate automatic titles
+  */
+  title: 'Button',
+  component: Button,
+};
+
+const Template = (args) => ({
+  //👇 Your template goes here
+});
+
+export const CustomSource = Template.bind({});
 CustomSource.parameters = {
   docs: {
     source: {
-      code: 'Some custom string here',
+      code: 'Your code snippet goes here.',
+      language: "yml",
+      type: "auto",
     },
   },
 };

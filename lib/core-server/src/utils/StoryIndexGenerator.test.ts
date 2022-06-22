@@ -1,5 +1,6 @@
 import path from 'path';
-import { normalizeStoriesEntry, NormalizedStoriesSpecifier } from '@storybook/core-common';
+import { normalizeStoriesEntry } from '@storybook/core-common';
+import type { NormalizedStoriesSpecifier } from '@storybook/core-common';
 import { readCsfOrMdx, getStorySortParameter } from '@storybook/csf-tools';
 
 import { StoryIndexGenerator } from './StoryIndexGenerator';
@@ -15,6 +16,7 @@ const options = {
   configDir: path.join(__dirname, '__mockdata__'),
   workingDir: path.join(__dirname, '__mockdata__'),
   storiesV2Compatibility: false,
+  storyStoreV7: true,
 };
 
 describe('StoryIndexGenerator', () => {
@@ -65,13 +67,13 @@ describe('StoryIndexGenerator', () => {
                 "id": "nested-button--story-one",
                 "importPath": "./src/nested/Button.stories.ts",
                 "name": "Story One",
-                "title": "Nested/Button",
+                "title": "nested/Button",
               },
-              "second-nested-f--story-one": Object {
-                "id": "second-nested-f--story-one",
-                "importPath": "./src/second-nested/F.stories.ts",
+              "second-nested-g--story-one": Object {
+                "id": "second-nested-g--story-one",
+                "importPath": "./src/second-nested/G.stories.ts",
                 "name": "Story One",
-                "title": "Second Nested/F",
+                "title": "second-nested/G",
               },
             },
             "v": 3,
@@ -111,17 +113,23 @@ describe('StoryIndexGenerator', () => {
                 "name": "Story One",
                 "title": "D",
               },
+              "first-nested-deeply-f--story-one": Object {
+                "id": "first-nested-deeply-f--story-one",
+                "importPath": "./src/first-nested/deeply/F.stories.js",
+                "name": "Story One",
+                "title": "first-nested/deeply/F",
+              },
               "nested-button--story-one": Object {
                 "id": "nested-button--story-one",
                 "importPath": "./src/nested/Button.stories.ts",
                 "name": "Story One",
-                "title": "Nested/Button",
+                "title": "nested/Button",
               },
-              "second-nested-f--story-one": Object {
-                "id": "second-nested-f--story-one",
-                "importPath": "./src/second-nested/F.stories.ts",
+              "second-nested-g--story-one": Object {
+                "id": "second-nested-g--story-one",
+                "importPath": "./src/second-nested/G.stories.ts",
                 "name": "Story One",
-                "title": "Second Nested/F",
+                "title": "second-nested/G",
               },
             },
             "v": 3,
@@ -142,7 +150,7 @@ describe('StoryIndexGenerator', () => {
       await generator.initialize();
 
       (getStorySortParameter as jest.Mock).mockReturnValueOnce({
-        order: ['D', 'B', 'Nested', 'A', 'Second Nested'],
+        order: ['D', 'B', 'nested', 'A', 'second-nested', 'first-nested/deeply'],
       });
 
       expect(Object.keys((await generator.getIndex()).stories)).toEqual([
@@ -150,7 +158,8 @@ describe('StoryIndexGenerator', () => {
         'b--story-one',
         'nested-button--story-one',
         'a--story-one',
-        'second-nested-f--story-one',
+        'second-nested-g--story-one',
+        'first-nested-deeply-f--story-one',
       ]);
     });
   });
@@ -167,7 +176,7 @@ describe('StoryIndexGenerator', () => {
         const generator = new StoryIndexGenerator([specifier], options);
         await generator.initialize();
         await generator.getIndex();
-        expect(readCsfOrMdxMock).toHaveBeenCalledTimes(5);
+        expect(readCsfOrMdxMock).toHaveBeenCalledTimes(7);
 
         readCsfOrMdxMock.mockClear();
         await generator.getIndex();
@@ -204,7 +213,7 @@ describe('StoryIndexGenerator', () => {
         const generator = new StoryIndexGenerator([specifier], options);
         await generator.initialize();
         await generator.getIndex();
-        expect(readCsfOrMdxMock).toHaveBeenCalledTimes(5);
+        expect(readCsfOrMdxMock).toHaveBeenCalledTimes(7);
 
         generator.invalidate(specifier, './src/B.stories.ts', false);
 
@@ -244,7 +253,7 @@ describe('StoryIndexGenerator', () => {
           const generator = new StoryIndexGenerator([specifier], options);
           await generator.initialize();
           await generator.getIndex();
-          expect(readCsfOrMdxMock).toHaveBeenCalledTimes(5);
+          expect(readCsfOrMdxMock).toHaveBeenCalledTimes(7);
 
           generator.invalidate(specifier, './src/B.stories.ts', true);
 
@@ -283,7 +292,7 @@ describe('StoryIndexGenerator', () => {
           const generator = new StoryIndexGenerator([specifier], options);
           await generator.initialize();
           await generator.getIndex();
-          expect(readCsfOrMdxMock).toHaveBeenCalledTimes(5);
+          expect(readCsfOrMdxMock).toHaveBeenCalledTimes(7);
 
           generator.invalidate(specifier, './src/B.stories.ts', true);
 

@@ -14,13 +14,6 @@
       "type": "string",
       "description": "The full path for the TypeScript configuration file, relative to the current workspace."
     },
-    "staticDir": {
-      "type": "array",
-      "description": "Directory where to load static files from, array of strings.",
-      "items": {
-        "type": "string"
-      }
-    },
     "outputDir": {
       "type": "string",
       "description": "Directory where to store built files.",
@@ -58,15 +51,66 @@
       "items": {
         "type": "string"
       }
+    },
+    "webpackStatsJson": {
+      "type": "boolean",
+      "description": "Write Webpack Stats JSON to disk",
+      "default": false
+    },
+    "styles": {
+      "type": "array",
+      "description": "Global styles to be included in the build.",
+      "items": {
+        "$ref": "#/definitions/extraEntryPoint"
+      },
+      "default": ""
+    },
+    "stylePreprocessorOptions": {
+      "description": "Options to pass to style preprocessors.",
+      "type": "object",
+      "properties": {
+        "includePaths": {
+          "description": "Paths to include. Paths will be resolved to workspace root.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "default": ""
     }
   },
   "additionalProperties": false,
-  "oneOf": [
-    {
-      "required": ["browserTarget"]
-    },
-    {
-      "required": ["tsConfig"]
+  "definitions": {
+    "extraEntryPoint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "input": {
+              "type": "string",
+              "description": "The file to include."
+            },
+            "bundleName": {
+              "type": "string",
+              "pattern": "^[\\w\\-.]*$",
+              "description": "The bundle name for this extra entry point."
+            },
+            "inject": {
+              "type": "boolean",
+              "description": "If the bundle will be referenced in the HTML file.",
+              "default": true
+            }
+          },
+          "additionalProperties": false,
+          "required": ["input"]
+        },
+        {
+          "type": "string",
+          "description": "The file to include."
+        }
+      ]
     }
-  ]
+  }
 }

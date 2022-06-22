@@ -14,6 +14,12 @@ module.exports = {
   ],
   core: {
     builder: 'webpack4',
+    channelOptions: { allowFunction: false, maxDepth: 10 },
+    disableTelemetry: true,
   },
   staticDirs: ['../public'],
+  features: {
+    buildStoriesJson: true,
+    storyStoreV7: !global.navigator?.userAgent?.match?.('jsdom'),
+  },
 };

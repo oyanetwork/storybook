@@ -1,8 +1,10 @@
 import 'jest-specific-snapshot';
 import path from 'path';
-import { Configuration } from 'webpack';
-import Cache from 'file-system-cache';
-import { resolvePathInStorybookCache } from '@storybook/core-common';
+import { mkdtemp as mkdtempCb } from 'fs';
+import os from 'os';
+import { promisify } from 'util';
+import type { Configuration } from 'webpack';
+import { resolvePathInStorybookCache, createFileSystemCache } from '@storybook/core-common';
 import { executor as previewExecutor } from '@storybook/builder-webpack4';
 import { executor as managerExecutor } from '@storybook/manager-webpack4';
 
@@ -19,9 +21,13 @@ import htmlOptions from '../../../app/html/src/server/options';
 import webComponentsOptions from '../../../app/web-components/src/server/options';
 import { outputStats } from './utils/output-stats';
 
+const { SNAPSHOT_OS } = global;
+const mkdtemp = promisify(mkdtempCb);
+
 // this only applies to this file
 jest.setTimeout(10000);
 
+// FIXME: this doesn't work
 const skipStoriesJsonPreset = [{ features: { buildStoriesJson: false, storyStoreV7: false } }];
 
 jest.mock('@storybook/builder-webpack4', () => {
@@ -32,6 +38,31 @@ jest.mock('@storybook/builder-webpack4', () => {
   actualBuilder.overridePresets = [...actualBuilder.overridePresets, skipStoriesJsonPreset];
   return actualBuilder;
 });
+
+jest.mock('@storybook/telemetry', () => ({
+  getStorybookMetadata: jest.fn(() => ({})),
+  telemetry: jest.fn(() => ({})),
+}));
+
+jest.mock('./utils/StoryIndexGenerator', () => {
+  const { StoryIndexGenerator } = jest.requireActual('./utils/StoryIndexGenerator');
+  return {
+    StoryIndexGenerator: class extends StoryIndexGenerator {
+      initialize() {
+        return Promise.resolve(undefined);
+      }
+
+      getIndex() {
+        return { stories: {}, v: 3 };
+      }
+    },
+  };
+});
+
+jest.mock('./utils/stories-json', () => ({
+  extractStoriesJson: () => Promise.resolve(),
+  useStoriesJson: () => {},
+}));
 
 jest.mock('@storybook/manager-webpack4', () => {
   const value = jest.fn();
@@ -55,7 +86,7 @@ jest.mock('@storybook/store', () => {
 jest.mock('cpy', () => () => Promise.resolve());
 jest.mock('http', () => ({
   ...jest.requireActual('http'),
-  createServer: () => ({ listen: (_options, cb) => cb() }),
+  createServer: () => ({ listen: (_options, cb) => cb(), on: jest.fn() }),
 }));
 jest.mock('ws');
 jest.mock('@storybook/node-logger', () => ({
@@ -72,7 +103,7 @@ jest.mock('./utils/output-startup-information', () => ({
 
 jest.mock('./utils/output-stats');
 
-const cache = Cache({
+const cache = createFileSystemCache({
   basePath: resolvePathInStorybookCache('dev-server'),
   ns: 'storybook-test', // Optional. A grouping namespace for items.
 });
@@ -84,8 +115,7 @@ const baseOptions = {
   managerOnly, // production
   docsMode: false,
   cache,
-  configDir: path.resolve(`${__dirname}/../../../examples/react-ts/.storybook`),
-  outputDir: `${__dirname}/storybook-static`, // production
+  configDir: path.resolve(`${__dirname}/../../../examples/cra-ts-essentials/.storybook`),
   ci: true,
   managerCache: false,
 };
@@ -135,44 +165,35 @@ describe.each([
   ['web-components-kitchen-sink', webComponentsOptions],
   ['html-kitchen-sink', htmlOptions],
 ])('%s', (example, frameworkOptions) => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    cache.clear();
-  });
-
-  const options = {
-    ...baseOptions,
-    ...frameworkOptions,
-    configDir: path.resolve(`${__dirname}/../../../examples/${example}/.storybook`),
-  };
-
-  describe('manager', () => {
-    it('dev mode', async () => {
-      await buildDevStandalone({ ...options, ignorePreview: true });
-
-      const managerConfig = prepareSnap(managerExecutor.get, 'manager');
-      expect(managerConfig).toMatchSpecificSnapshot(snap(`${example}_manager-dev`));
+  describe.each([
+    ['manager', managerExecutor],
+    ['preview', previewExecutor],
+  ])('%s', (component, executor) => {
+    beforeEach(async () => {
+      jest.clearAllMocks();
+      await cache.clear();
     });
-    it('production mode', async () => {
-      await buildStaticStandalone({ ...options, ignorePreview: true });
 
-      const managerConfig = prepareSnap(managerExecutor.get, 'manager');
-      expect(managerConfig).toMatchSpecificSnapshot(snap(`${example}_manager-prod`));
-    });
-  });
-
-  describe('preview', () => {
-    it('dev mode', async () => {
-      await buildDevStandalone({ ...options, managerCache: true });
-
-      const previewConfig = prepareSnap(previewExecutor.get, 'preview');
-      expect(previewConfig).toMatchSpecificSnapshot(snap(`${example}_preview-dev`));
-    });
-    it('production mode', async () => {
-      await buildStaticStandalone({ ...options, managerCache: true });
-
-      const previewConfig = prepareSnap(previewExecutor.get, 'preview');
-      expect(previewConfig).toMatchSpecificSnapshot(snap(`${example}_preview-prod`));
+    it.each([
+      ['prod', buildStaticStandalone],
+      ['dev', buildDevStandalone],
+    ])('%s', async (mode, builder) => {
+      console.log('running for ', mode, builder);
+      const options = {
+        ...baseOptions,
+        ...frameworkOptions,
+        configDir: path.resolve(`${__dirname}/../../../examples/${example}/.storybook`),
+        // Only add an outputDir in production mode.
+        outputDir:
+          mode === 'prod' ? await mkdtemp(path.join(os.tmpdir(), 'storybook-static-')) : undefined,
+        ignorePreview: component === 'manager',
+        managerCache: component === 'preview',
+      };
+      await builder(options);
+      const config = prepareSnap(executor.get, component);
+      expect(config).toMatchSpecificSnapshot(
+        snap(`${example}_${component}-${mode}-${SNAPSHOT_OS}`)
+      );
     });
   });
 });
@@ -181,9 +202,9 @@ const progressPlugin = (config) =>
   config.plugins.find((p) => p.constructor.name === 'ProgressPlugin');
 
 describe('dev cli flags', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
-    cache.clear();
+    await cache.clear();
   });
 
   const cliOptions = { ...reactOptions, ...baseOptions };
@@ -248,16 +269,23 @@ describe('dev cli flags', () => {
 });
 
 describe('build cli flags', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
-    cache.clear();
+    await cache.clear();
   });
-  const cliOptions = { ...reactOptions, ...baseOptions };
+  const cliOptions = {
+    ...reactOptions,
+    ...baseOptions,
+    outputDir: `${__dirname}/storybook-static`,
+  };
 
-  it('--webpack-stats-json calls output-stats', async () => {
+  // eslint-disable-next-line jest/no-disabled-tests
+  it.skip('does not call output-stats', async () => {
     await buildStaticStandalone(cliOptions);
     expect(outputStats).not.toHaveBeenCalled();
+  });
 
+  it('--webpack-stats-json calls output-stats', async () => {
     await buildStaticStandalone({ ...cliOptions, webpackStatsJson: '/tmp/dir' });
     expect(outputStats).toHaveBeenCalledWith(
       '/tmp/dir',

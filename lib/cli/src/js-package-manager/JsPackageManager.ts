@@ -4,7 +4,7 @@ import { sync as spawnSync } from 'cross-spawn';
 import { commandLog } from '../helpers';
 import { PackageJson, PackageJsonWithDepsAndDevDeps } from './PackageJson';
 import { readPackageJson, writePackageJson } from './PackageJsonHelper';
-import storybookPackagesVersions from '../versions.json';
+import storybookPackagesVersions from '../versions';
 
 const logger = console;
 
@@ -60,13 +60,12 @@ export abstract class JsPackageManager {
    * If there is no `package.json` it will create one.
    */
   public retrievePackageJson(): PackageJsonWithDepsAndDevDeps {
-    let packageJson = readPackageJson();
-    if (!packageJson) {
-      // It will create a new package.json file
+    let packageJson;
+    try {
+      packageJson = readPackageJson();
+    } catch (err) {
       this.initPackageJson();
-
-      // read the newly created package.json file
-      packageJson = readPackageJson() || {};
+      packageJson = readPackageJson();
     }
 
     return {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Global, css } from '@emotion/core';
+import { Global, css } from '@emotion/react';
 
 import { Title, Subtitle, DocsPageWrapper } from './DocsPage';
 import { ArgsTable, Source, Description } from './index';
@@ -33,6 +33,19 @@ export default {
     layout: 'fullscreen',
   },
 };
+
+export const Loading = () => (
+  <DocsPageWrapper>
+    <Title>DocsPage</Title>
+    <Subtitle>
+      What the DocsPage looks like. Meant to be QAed in Canvas tab not in Docs tab.
+    </Subtitle>
+    <Description {...description.Text.args} />
+    <Preview.Loading />
+    <argsTable.Loading {...argsTable.Loading.args} />
+    <Source {...source.Loading.args} />
+  </DocsPageWrapper>
+);
 
 export const WithSubtitle = () => (
   <DocsPageWrapper>

@@ -5,11 +5,13 @@ import {
   resetComponents,
   Preview as PurePreview,
   PreviewProps as PurePreviewProps,
+  PreviewSkeleton,
 } from '@storybook/components';
 import { DocsContext, DocsContextProps } from './DocsContext';
 import { SourceContext, SourceContextProps } from './SourceContainer';
 import { getSourceProps, SourceState } from './Source';
 import { useStories } from './useStory';
+import { CURRENT_SELECTION } from './types';
 
 export { SourceState };
 
@@ -52,7 +54,10 @@ const getPreviewProps = (
   );
   const sourceProps = getSourceProps({ ids: targetIds }, docsContext, sourceContext);
   if (!sourceState) sourceState = sourceProps.state;
-  const stories = useStories(targetIds, docsContext);
+  const storyIds = targetIds.map((targetId) =>
+    targetId === CURRENT_SELECTION ? docsContext.id : targetId
+  );
+  const stories = useStories(storyIds, docsContext);
   isLoading = stories.some((s) => !s);
 
   return {
@@ -71,7 +76,9 @@ export const Canvas: FC<CanvasProps> = (props) => {
   const { isLoading, previewProps } = getPreviewProps(props, docsContext, sourceContext);
   const { children } = props;
 
-  return isLoading ? null : (
+  if (isLoading) return <PreviewSkeleton />;
+
+  return (
     <MDXProvider components={resetComponents}>
       <PurePreview {...previewProps}>{children}</PurePreview>
     </MDXProvider>

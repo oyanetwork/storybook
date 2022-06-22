@@ -18,10 +18,31 @@ export class NPMProxy extends JsPackageManager {
     return `npm run ${command}`;
   }
 
+  getNpmVersion(): string {
+    return this.executeCommand('npm', ['--version']);
+  }
+
+  hasLegacyPeerDeps() {
+    const result = this.executeCommand('npm', [
+      'config',
+      'get',
+      'legacy-peer-deps',
+      '--location=project',
+    ]);
+    return result.trim() === 'true';
+  }
+
+  setLegacyPeerDeps() {
+    this.executeCommand('npm', ['config', 'set', 'legacy-peer-deps=true', '--location=project']);
+  }
+
+  needsLegacyPeerDeps(version: string) {
+    return semver.gte(version, '7.0.0') && !this.hasLegacyPeerDeps();
+  }
+
   getInstallArgs(): string[] {
     if (!this.installArgs) {
-      const version = this.executeCommand('npm', ['--version']);
-      this.installArgs = semver.gte(version, '7.0.0')
+      this.installArgs = this.needsLegacyPeerDeps(this.getNpmVersion())
         ? ['install', '--legacy-peer-deps']
         : ['install'];
     }

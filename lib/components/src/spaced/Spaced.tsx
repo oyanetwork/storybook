@@ -1,5 +1,5 @@
 import React, { FunctionComponent } from 'react';
-import { styled, ignoreSsrWarning } from '@storybook/theming';
+import { styled } from '@storybook/theming';
 
 const toNumber = (input: any) => (typeof input === 'number' ? input : Number(input));
 
@@ -19,7 +19,7 @@ const Container = styled.div<ContainerProps>(
             marginLeft: col * theme.layoutMargin,
             verticalAlign: 'inherit',
           },
-          [`& > *:first-child${ignoreSsrWarning}`]: {
+          [`& > *:first-child`]: {
             marginLeft: 0,
           },
         }
@@ -27,7 +27,7 @@ const Container = styled.div<ContainerProps>(
           '& > *': {
             marginTop: row * theme.layoutMargin,
           },
-          [`& > *:first-child${ignoreSsrWarning}`]: {
+          [`& > *:first-child`]: {
             marginTop: 0,
           },
         },

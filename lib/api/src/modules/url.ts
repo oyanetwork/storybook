@@ -48,6 +48,7 @@ const initialUrlSupport = ({
     nav,
     shortcuts,
     addonPanel,
+    tabs,
     addons, // deprecated
     panelRight, // deprecated
     stories, // deprecated
@@ -62,6 +63,7 @@ const initialUrlSupport = ({
     showNav: !singleStory && parseBoolean(nav),
     showPanel: parseBoolean(panel),
     panelPosition: ['right', 'bottom'].includes(panel) ? panel : undefined,
+    showTabs: parseBoolean(tabs),
   };
   const ui: Partial<UI> = {
     enableShortcuts: parseBoolean(shortcuts),
@@ -209,7 +211,7 @@ export const init: ModuleFn = ({ store, navigate, state, provider, fullAPI, ...r
       api.setQueryParams({ globals: globalsString });
     });
 
-    fullAPI.on(NAVIGATE_URL, (url: string, options: { [k: string]: any }) => {
+    fullAPI.on(NAVIGATE_URL, (url: string, options: NavigateOptions) => {
       fullAPI.navigateUrl(url, options);
     });
 

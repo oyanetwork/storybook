@@ -1,4 +1,4 @@
-import React, { FunctionComponent } from 'react';
+import React, { ComponentProps, FunctionComponent } from 'react';
 import { styled, ThemeProvider, convert, themes } from '@storybook/theming';
 import { EmptyBlock } from './EmptyBlock';
 
@@ -24,15 +24,47 @@ export enum SourceError {
 }
 
 interface SourceErrorProps {
+  isLoading?: boolean;
   error?: SourceError;
 }
 
 interface SourceCodeProps {
   language?: string;
   code?: string;
-  format?: boolean;
+  format?: ComponentProps<typeof SyntaxHighlighter>['format'];
   dark?: boolean;
 }
+
+const SourceSkeletonWrapper = styled.div<{}>(({ theme }) => ({
+  background: theme.background.content,
+  borderRadius: theme.appBorderRadius,
+  border: `1px solid ${theme.appBorderColor}`,
+  boxShadow:
+    theme.base === 'light' ? 'rgba(0, 0, 0, 0.10) 0 1px 3px 0' : 'rgba(0, 0, 0, 0.20) 0 2px 5px 0',
+  margin: '25px 0 40px',
+  padding: '20px 20px 20px 22px',
+}));
+
+const SourceSkeletonPlaceholder = styled.div<{}>(({ theme }) => ({
+  animation: `${theme.animation.glow} 1.5s ease-in-out infinite`,
+  background: theme.appBorderColor,
+  height: 17,
+  marginTop: 1,
+  width: '60%',
+
+  [`&:first-child`]: {
+    margin: 0,
+  },
+}));
+
+const SourceSkeleton = () => (
+  <SourceSkeletonWrapper>
+    <SourceSkeletonPlaceholder />
+    <SourceSkeletonPlaceholder style={{ width: '80%' }} />
+    <SourceSkeletonPlaceholder style={{ width: '30%' }} />
+    <SourceSkeletonPlaceholder style={{ width: '80%' }} />
+  </SourceSkeletonWrapper>
+);
 
 // FIXME: Using | causes a typescript error, so stubbing it with & for now
 // and making `error` optional
@@ -42,7 +74,10 @@ export type SourceProps = SourceErrorProps & SourceCodeProps;
  * Syntax-highlighted source code for a component (or anything!)
  */
 const Source: FunctionComponent<SourceProps> = (props) => {
-  const { error } = props as SourceErrorProps;
+  const { isLoading, error } = props as SourceErrorProps;
+  if (isLoading) {
+    return <SourceSkeleton />;
+  }
   if (error) {
     return <EmptyBlock>{error}</EmptyBlock>;
   }

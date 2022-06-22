@@ -1,14 +1,15 @@
 /* eslint-disable no-underscore-dangle */
+import path from 'path';
 import { JsPackageManager } from '../../js-package-manager';
 import { angular12 } from './angular12';
 
 // eslint-disable-next-line global-require, jest/no-mocks-import
 jest.mock('fs-extra', () => require('../../../../../__mocks__/fs-extra'));
 
-const checkCra5 = async ({ packageJson, main }) => {
+const checkAngular12 = async ({ packageJson, main }) => {
   // eslint-disable-next-line global-require
   require('fs-extra').__setMockFiles({
-    '.storybook/main.js': `module.exports = ${JSON.stringify(main)};`,
+    [path.join('.storybook', 'main.js')]: `module.exports = ${JSON.stringify(main)};`,
   });
   const packageManager = {
     retrievePackageJson: () => ({ dependencies: {}, devDependencies: {}, ...packageJson }),
@@ -24,7 +25,7 @@ describe('angular12 fix', () => {
       };
       it('should fail', async () => {
         await expect(
-          checkCra5({
+          checkAngular12({
             packageJson,
             main: {},
           })
@@ -35,7 +36,7 @@ describe('angular12 fix', () => {
       const packageJson = { dependencies: { '@storybook/react': '^6.2.0' } };
       it('should no-op', async () => {
         await expect(
-          checkCra5({
+          checkAngular12({
             packageJson,
             main: {},
           })
@@ -51,7 +52,7 @@ describe('angular12 fix', () => {
       describe('webpack5 builder', () => {
         it('should no-op', async () => {
           await expect(
-            checkCra5({
+            checkAngular12({
               packageJson,
               main: { core: { builder: 'webpack5' } },
             })
@@ -61,7 +62,7 @@ describe('angular12 fix', () => {
       describe('custom builder', () => {
         it('should no-op', async () => {
           await expect(
-            checkCra5({
+            checkAngular12({
               packageJson,
               main: { core: { builder: 'storybook-builder-vite' } },
             })
@@ -71,7 +72,7 @@ describe('angular12 fix', () => {
       describe('webpack4 builder', () => {
         it('should add webpack5 builder', async () => {
           await expect(
-            checkCra5({
+            checkAngular12({
               packageJson,
               main: { core: { builder: 'webpack4' } },
             })
@@ -84,7 +85,7 @@ describe('angular12 fix', () => {
       describe('no builder', () => {
         it('should add webpack5 builder', async () => {
           await expect(
-            checkCra5({
+            checkAngular12({
               packageJson,
               main: {},
             })
@@ -98,7 +99,7 @@ describe('angular12 fix', () => {
     describe('no angular dependency', () => {
       it('should no-op', async () => {
         await expect(
-          checkCra5({
+          checkAngular12({
             packageJson: {},
             main: {},
           })
@@ -108,7 +109,7 @@ describe('angular12 fix', () => {
     describe('angular11 dependency', () => {
       it('should no-op', async () => {
         await expect(
-          checkCra5({
+          checkAngular12({
             packageJson: {
               dependencies: {
                 '@angular/core': '11',
@@ -127,7 +128,7 @@ describe('angular12 fix', () => {
       };
       it('should no-op', async () => {
         await expect(
-          checkCra5({
+          checkAngular12({
             packageJson,
             main: {},
           })

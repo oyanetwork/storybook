@@ -1,10 +1,9 @@
 import path from 'path';
 import { DefinePlugin, HotModuleReplacementPlugin, ProgressPlugin } from 'webpack';
 // @ts-ignore
-import { Configuration, RuleSetRule } from '@types/webpack';
+import type { Configuration, RuleSetRule } from '@types/webpack';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import CaseSensitivePathsPlugin from 'case-sensitive-paths-webpack-plugin';
-import WatchMissingNodeModulesPlugin from 'react-dev-utils/WatchMissingNodeModulesPlugin';
 import TerserWebpackPlugin from 'terser-webpack-plugin';
 import VirtualModulePlugin from 'webpack-virtual-modules';
 import PnpWebpackPlugin from 'pnp-webpack-plugin';
@@ -19,14 +18,12 @@ import {
   es6Transpiler,
   handlebars,
   interpolate,
-  nodeModulesPaths,
-  Options,
   toImportFn,
   normalizeStories,
   loadPreviewOrConfigFile,
   readTemplate,
-  CoreConfig,
 } from '@storybook/core-common';
+import type { Options, CoreConfig } from '@storybook/core-common';
 import { createBabelLoader } from './babel-loader-preview';
 
 import { useBaseTsSupport } from './useBaseTsSupport';
@@ -64,6 +61,7 @@ export default async (options: Options & Record<string, any>): Promise<Configura
     framework,
     frameworkPath,
     presets,
+    previewUrl,
     typescriptOptions,
     modern,
     features,
@@ -102,7 +100,11 @@ export default async (options: Options & Record<string, any>): Promise<Configura
 
     const configEntryPath = path.resolve(path.join(workingDir, 'storybook-config-entry.js'));
     virtualModuleMapping[configEntryPath] = handlebars(
-      await readTemplate(path.join(__dirname, 'virtualModuleModernEntry.js.handlebars')),
+      await readTemplate(
+        require.resolve(
+          '@storybook/builder-webpack4/templates/virtualModuleModernEntry.js.handlebars'
+        )
+      ),
       {
         storiesFilename,
         configs,
@@ -179,10 +181,8 @@ export default async (options: Options & Record<string, any>): Promise<Configura
         chunksSortMode: 'none' as any,
         alwaysWriteToDisk: true,
         inject: false,
-        templateParameters: (compilation, files, templateOptions) => ({
-          compilation,
-          files,
-          options: templateOptions,
+        template,
+        templateParameters: {
           version: packageJson.version,
           globals: {
             CONFIG_TYPE: configType,
@@ -190,6 +190,7 @@ export default async (options: Options & Record<string, any>): Promise<Configura
             FRAMEWORK_OPTIONS: frameworkOptions,
             CHANNEL_OPTIONS: coreOptions?.channelOptions,
             FEATURES: features,
+            PREVIEW_URL: previewUrl,
             STORIES: stories.map((specifier) => ({
               ...specifier,
               importPathMatcher: specifier.importPathMatcher.source,
@@ -198,7 +199,7 @@ export default async (options: Options & Record<string, any>): Promise<Configura
           },
           headHtmlSnippet,
           bodyHtmlSnippet,
-        }),
+        },
         minify: {
           collapseWhitespace: true,
           removeComments: true,
@@ -207,13 +208,11 @@ export default async (options: Options & Record<string, any>): Promise<Configura
           removeStyleLinkTypeAttributes: true,
           useShortDoctype: true,
         },
-        template,
       }),
       new DefinePlugin({
         ...stringifyProcessEnvs(envs),
         NODE_ENV: JSON.stringify(envs.NODE_ENV),
       }),
-      isProd ? null : new WatchMissingNodeModulesPlugin(nodeModulesPaths),
       isProd ? null : new HotModuleReplacementPlugin(),
       new CaseSensitivePathsPlugin(),
       quiet ? null : new ProgressPlugin({}),
@@ -238,7 +237,7 @@ export default async (options: Options & Record<string, any>): Promise<Configura
       modules: ['node_modules'].concat(envs.NODE_PATH || []),
       mainFields: [modern ? 'sbmodern' : null, 'browser', 'module', 'main'].filter(Boolean),
       alias: {
-        ...themingPaths,
+        ...(features?.emotionAlias ? themingPaths : {}),
         ...storybookPaths,
         react: path.dirname(require.resolve('react/package.json')),
         'react-dom': path.dirname(require.resolve('react-dom/package.json')),

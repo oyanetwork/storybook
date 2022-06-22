@@ -1,16 +1,17 @@
 import path from 'path';
 import fse from 'fs-extra';
-import { DefinePlugin, Configuration, WebpackPluginInstance } from 'webpack';
+import { DefinePlugin } from 'webpack';
+import type { Configuration, WebpackPluginInstance } from 'webpack';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import CaseSensitivePathsPlugin from 'case-sensitive-paths-webpack-plugin';
 import PnpWebpackPlugin from 'pnp-webpack-plugin';
 import VirtualModulePlugin from 'webpack-virtual-modules';
 import TerserWebpackPlugin from 'terser-webpack-plugin';
 
-import themingPaths from '@storybook/theming/paths';
 import uiPaths from '@storybook/ui/paths';
 
 import readPackage from 'read-pkg-up';
+import type { Options, ManagerWebpackOptions } from '@storybook/core-common';
 import {
   loadManagerOrAddonsFile,
   resolvePathInStorybookCache,
@@ -18,8 +19,6 @@ import {
   es6Transpiler,
   getManagerHeadTemplate,
   getManagerMainTemplate,
-  Options,
-  ManagerWebpackOptions,
 } from '@storybook/core-common';
 
 import { babelLoader } from './babel-loader-manager';
@@ -80,23 +79,21 @@ export async function managerWebpack(
     },
     plugins: [
       refs
-        ? ((new VirtualModulePlugin({
+        ? (new VirtualModulePlugin({
             [path.resolve(path.join(configDir, `generated-refs.js`))]: refsTemplate.replace(
               `'{{refs}}'`,
               JSON.stringify(refs)
             ),
-          }) as any) as WebpackPluginInstance)
+          }) as any as WebpackPluginInstance)
         : null,
-      (new HtmlWebpackPlugin({
+      new HtmlWebpackPlugin({
         filename: `index.html`,
         // FIXME: `none` isn't a known option
         chunksSortMode: 'none' as any,
         alwaysWriteToDisk: true,
         inject: false,
-        templateParameters: (compilation, files, options) => ({
-          compilation,
-          files,
-          options,
+        template,
+        templateParameters: {
           version,
           globals: {
             CONFIG_TYPE: configType,
@@ -109,10 +106,9 @@ export async function managerWebpack(
             SERVER_CHANNEL_URL: serverChannelUrl,
           },
           headHtmlSnippet,
-        }),
-        template,
-      }) as any) as WebpackPluginInstance,
-      (new CaseSensitivePathsPlugin() as any) as WebpackPluginInstance,
+        },
+      }) as any as WebpackPluginInstance,
+      new CaseSensitivePathsPlugin() as any as WebpackPluginInstance,
       // graphql sources check process variable
       new DefinePlugin({
         ...stringifyProcessEnvs(envs),
@@ -164,7 +160,6 @@ export async function managerWebpack(
       modules: ['node_modules'].concat(envs.NODE_PATH || []),
       mainFields: [modern ? 'sbmodern' : null, 'browser', 'module', 'main'].filter(Boolean),
       alias: {
-        ...themingPaths,
         ...uiPaths,
       },
       plugins: [

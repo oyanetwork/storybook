@@ -1,7 +1,7 @@
 import program, { CommanderStatic } from 'commander';
 import chalk from 'chalk';
 import { logger } from '@storybook/node-logger';
-import { CLIOptions } from '@storybook/core-common';
+import type { CLIOptions } from '@storybook/core-common';
 import { parseList, getEnvConfig, checkDeprecatedFlags } from './utils';
 
 export async function getDevCli(packageJson: {
@@ -33,6 +33,13 @@ export async function getDevCli(packageJson: {
     .option('--loglevel <level>', 'Control level of logging during build')
     .option('--quiet', 'Suppress verbose build output')
     .option('--no-version-updates', 'Suppress update check', true)
+    .option(
+      '--disable-telemetry',
+      'Disable sending telemetry',
+      // default value is false, but if the user sets STORYBOOK_DISABLE_TELEMETRY, it can be true
+      process.env.STORYBOOK_DISABLE_TELEMETRY && process.env.STORYBOOK_DISABLE_TELEMETRY !== 'false'
+    )
+    .option('--enable-crash-reports', 'enable sending crash reports to telemetry data')
     .option(
       '--no-release-notes',
       'Suppress automatic redirects to the release notes after upgrading',

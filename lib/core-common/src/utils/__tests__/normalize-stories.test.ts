@@ -23,11 +23,26 @@ expect.extend({
   },
 });
 
-jest.mock('fs', () => ({
-  lstatSync: (path: string) => ({
-    isDirectory: () => !path.match(/\.[a-z]+$/),
-  }),
-}));
+jest.mock('fs', () => {
+  const mockStat = (
+    path: string,
+    options: Record<string, any>,
+    cb: (error?: Error, stats?: Record<string, any>) => void
+  ) => {
+    cb(undefined, {
+      isDirectory: () => !path.match(/\.[a-z]+$/),
+    });
+  };
+
+  return {
+    access: (path: string, mode: number, cb: (err?: Error) => void): void => undefined,
+    lstatSync: (path: string) => ({
+      isDirectory: () => !path.match(/\.[a-z]+$/),
+    }),
+    stat: mockStat,
+    lstat: mockStat,
+  };
+});
 
 describe('normalizeStoriesEntry', () => {
   const options = {
@@ -49,6 +64,25 @@ describe('normalizeStoriesEntry', () => {
     expect(specifier.importPathMatcher).toMatchPaths(['./path/to/file.stories.mdx']);
     expect(specifier.importPathMatcher).not.toMatchPaths([
       './path/to/file.stories.js',
+      './file.stories.mdx',
+      '../file.stories.mdx',
+    ]);
+  });
+
+  it('story in config dir', () => {
+    const specifier = normalizeStoriesEntry('./file.stories.mdx', options);
+    expect(specifier).toMatchInlineSnapshot(`
+      {
+        "titlePrefix": "",
+        "directory": "./.storybook",
+        "files": "file.stories.mdx",
+        "importPathMatcher": {}
+      }
+    `);
+
+    expect(specifier.importPathMatcher).toMatchPaths(['./.storybook/file.stories.mdx']);
+    expect(specifier.importPathMatcher).not.toMatchPaths([
+      '.storybook/file.stories.mdx',
       './file.stories.mdx',
       '../file.stories.mdx',
     ]);
@@ -248,5 +282,28 @@ describe('normalizeStoriesEntry', () => {
         "importPathMatcher": {}
       }
     `);
+  });
+
+  it('globs with negation', () => {
+    const specifier = normalizeStoriesEntry('../!(negation)/*.stories.mdx', options);
+    expect(specifier).toMatchInlineSnapshot(`
+      {
+        "titlePrefix": "",
+        "directory": ".",
+        "files": "!(negation)/*.stories.mdx",
+        "importPathMatcher": {}
+      }
+    `);
+
+    expect(specifier.importPathMatcher).toMatchPaths([
+      './path/file.stories.mdx',
+      './second-path/file.stories.mdx',
+    ]);
+    expect(specifier.importPathMatcher).not.toMatchPaths([
+      './path/file.stories.js',
+      './path/to/file.stories.mdx',
+      './file.stories.mdx',
+      '../file.stories.mdx',
+    ]);
   });
 });

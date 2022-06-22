@@ -63,6 +63,7 @@ describe('A11YPanel', () => {
     mockedApi.useStorybookState.mockReset();
     mockedApi.useAddonState.mockReset();
 
+    mockedApi.useAddonState.mockImplementation((_, defaultState) => React.useState(defaultState));
     mockedApi.useChannel.mockReturnValue(jest.fn());
     mockedApi.useParameter.mockReturnValue({ manual: false });
     const state: Partial<api.State> = { storyId: 'jest' };
@@ -129,11 +130,14 @@ describe('A11YPanel', () => {
     const { getByText } = render(<ThemedA11YPanel />);
     const useChannelArgs = mockedApi.useChannel.mock.calls[0][0];
     act(() => useChannelArgs[EVENTS.RESULT](axeResult));
-    await waitFor(() => {
-      expect(getByText(/Tests completed/)).toBeTruthy();
-      expect(getByText(/Violations/)).toBeTruthy();
-      expect(getByText(/Passes/)).toBeTruthy();
-      expect(getByText(/Incomplete/)).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(getByText(/Tests completed/)).toBeTruthy();
+        expect(getByText(/Violations/)).toBeTruthy();
+        expect(getByText(/Passes/)).toBeTruthy();
+        expect(getByText(/Incomplete/)).toBeTruthy();
+      },
+      { timeout: 2000 }
+    );
   });
 });

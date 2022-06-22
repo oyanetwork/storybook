@@ -6,6 +6,7 @@ import { scan } from 'picomatch';
 import slash from 'slash';
 
 import type { StoriesEntry, NormalizedStoriesSpecifier } from '../types';
+import { normalizeStoryPath } from './paths';
 import { globToRegexp } from './glob-to-regexp';
 
 const DEFAULT_TITLE_PREFIX = '';
@@ -44,14 +45,11 @@ export const getDirectoryFromWorkingDir = ({
   directory,
 }: NormalizeOptions & { directory: string }) => {
   const directoryFromConfig = path.resolve(configDir, directory);
-  let directoryFromWorking = path.relative(workingDir, directoryFromConfig);
+  const directoryFromWorking = path.relative(workingDir, directoryFromConfig);
 
   // relative('/foo', '/foo/src') => 'src'
   // but we want `./src` to match importPaths
-  if (!directoryFromWorking.startsWith('.')) {
-    directoryFromWorking = `.${path.sep}${directoryFromWorking}`;
-  }
-  return directoryFromWorking;
+  return normalizeStoryPath(directoryFromWorking);
 };
 
 export const normalizeStoriesEntry = (
@@ -61,34 +59,28 @@ export const normalizeStoriesEntry = (
   let specifierWithoutMatcher: Omit<NormalizedStoriesSpecifier, 'importPathMatcher'>;
 
   if (typeof entry === 'string') {
-    if (!entry.includes('*')) {
-      if (isDirectory(configDir, entry)) {
-        specifierWithoutMatcher = {
-          titlePrefix: DEFAULT_TITLE_PREFIX,
-          directory: entry,
-          files: DEFAULT_FILES,
-        };
-      } else {
-        specifierWithoutMatcher = {
-          titlePrefix: DEFAULT_TITLE_PREFIX,
-          directory: path.dirname(entry),
-          files: path.basename(entry),
-        };
-      }
-    } else {
-      const fixedEntry = detectBadGlob(entry);
-      const globResult = scan(fixedEntry);
-      const directory = globResult.isGlob
-        ? globResult.prefix + globResult.base
-        : path.dirname(fixedEntry);
-      const filesFallback =
-        directory !== '.' ? fixedEntry.substr(directory.length + 1) : fixedEntry;
-      const files = globResult.isGlob ? globResult.glob : filesFallback;
+    const fixedEntry = detectBadGlob(entry);
+    const globResult = scan(fixedEntry);
+    if (globResult.isGlob) {
+      const directory = globResult.prefix + globResult.base;
+      const files = globResult.glob;
 
       specifierWithoutMatcher = {
         titlePrefix: DEFAULT_TITLE_PREFIX,
         directory,
         files,
+      };
+    } else if (isDirectory(configDir, entry)) {
+      specifierWithoutMatcher = {
+        titlePrefix: DEFAULT_TITLE_PREFIX,
+        directory: entry,
+        files: DEFAULT_FILES,
+      };
+    } else {
+      specifierWithoutMatcher = {
+        titlePrefix: DEFAULT_TITLE_PREFIX,
+        directory: path.dirname(entry),
+        files: path.basename(entry),
       };
     }
   } else {

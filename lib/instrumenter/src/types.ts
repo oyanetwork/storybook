@@ -1,20 +1,22 @@
-import { StoryId } from '@storybook/addons';
+import type { StoryId } from '@storybook/addons';
 
 export interface Call {
   id: string;
+  parentId?: Call['id'];
+  storyId: StoryId;
+  cursor: number;
   path: Array<string | CallRef>;
   method: string;
-  storyId: StoryId;
   args: any[];
   interceptable: boolean;
   retain: boolean;
-  state?: CallStates.DONE | CallStates.ERROR | CallStates.ACTIVE | CallStates.WAITING;
+  status?: CallStates.DONE | CallStates.ERROR | CallStates.ACTIVE | CallStates.WAITING;
   exception?: {
-    callId: Call['id'];
+    name: Error['name'];
     message: Error['message'];
     stack: Error['stack'];
+    callId: Call['id'];
   };
-  parentId?: Call['id'];
 }
 
 export enum CallStates {
@@ -38,7 +40,47 @@ export interface ElementRef {
   };
 }
 
+export interface ControlStates {
+  debugger: boolean;
+  start: boolean;
+  back: boolean;
+  goto: boolean;
+  next: boolean;
+  end: boolean;
+}
+
 export interface LogItem {
   callId: Call['id'];
-  state: Call['state'];
+  status: Call['status'];
+  parentId?: Call['id'];
+}
+
+export interface Payload {
+  controlStates: ControlStates;
+  logItems: LogItem[];
+}
+
+export interface State {
+  renderPhase: 'loading' | 'rendering' | 'playing' | 'played' | 'completed' | 'aborted' | 'errored';
+  isDebugging: boolean;
+  isPlaying: boolean;
+  isLocked: boolean;
+  cursor: number;
+  calls: Call[];
+  shadowCalls: Call[];
+  callRefsByResult: Map<any, CallRef & { retain: boolean }>;
+  chainedCallIds: Set<Call['id']>;
+  parentId?: Call['id'];
+  playUntil?: Call['id'];
+  resolvers: Record<Call['id'], Function>;
+  syncTimeout: ReturnType<typeof setTimeout>;
+  forwardedException?: Error;
+}
+
+export interface Options {
+  intercept?: boolean | ((method: string, path: Array<string | CallRef>) => boolean);
+  retain?: boolean;
+  mutate?: boolean;
+  path?: Array<string | CallRef>;
+  getArgs?: (call: Call, state: State) => Call['args'];
 }

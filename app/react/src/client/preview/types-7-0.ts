@@ -1,5 +1,5 @@
-import { JSXElementConstructor } from 'react';
-import { Args } from '@storybook/csf';
+import type { JSXElementConstructor } from 'react';
+import type { Args } from '@storybook/csf';
 
 import type { StoryObj } from './types-6-0';
 import type { ComponentStoryObj } from './types-6-3';
@@ -24,6 +24,5 @@ export type Story<TArgs = Args> = StoryObj<TArgs>;
  *   args: { buttonArg1: 'val' },
  * }
  * ```
- */ export type ComponentStory<
-  T extends keyof JSX.IntrinsicElements | JSXElementConstructor<any>
-> = ComponentStoryObj<T>;
+ */ export type ComponentStory<T extends keyof JSX.IntrinsicElements | JSXElementConstructor<any>> =
+  ComponentStoryObj<T>;

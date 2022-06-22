@@ -1,12 +1,18 @@
 import fs from 'fs';
 import path from 'path';
-import { toRequireContext, StoriesEntry, normalizeStoriesEntry } from '@storybook/core-common';
-import registerRequireContextHook from 'babel-plugin-require-context-hook/register';
+import type { NormalizedStoriesSpecifier, StoriesEntry } from '@storybook/core-common';
+import { toRequireContext, normalizeStoriesEntry } from '@storybook/core-common';
+import registerRequireContextHook from '@storybook/babel-plugin-require-context-hook/register';
 import global from 'global';
-import { AnyFramework, ArgsEnhancer, ArgTypesEnhancer, DecoratorFunction } from '@storybook/csf';
+import type {
+  AnyFramework,
+  ArgsEnhancer,
+  ArgTypesEnhancer,
+  DecoratorFunction,
+} from '@storybook/csf';
 
 import { ClientApi } from './Loader';
-import { StoryshotsOptions } from '../api/StoryshotsOptions';
+import type { StoryshotsOptions } from '../api/StoryshotsOptions';
 
 registerRequireContextHook();
 
@@ -19,8 +25,10 @@ const isFile = (file: string): boolean => {
 };
 
 interface Output {
+  features?: Record<string, boolean>;
   preview?: string;
-  stories?: string[];
+  stories?: NormalizedStoriesSpecifier[];
+  requireContexts?: string[];
 }
 
 const supportedExtensions = ['ts', 'tsx', 'js', 'jsx'];
@@ -50,15 +58,20 @@ function getConfigPathParts(input: string): Output {
       output.preview = preview;
     }
     if (main) {
-      const { stories = [] } = jest.requireActual(main);
+      const { stories = [], features = {} } = jest.requireActual(main);
 
+      output.features = features;
+
+      const workingDir = process.cwd();
       output.stories = stories.map((entry: StoriesEntry) => {
-        const workingDir = process.cwd();
         const specifier = normalizeStoriesEntry(entry, {
           configDir,
           workingDir,
         });
 
+        return specifier;
+      });
+      output.requireContexts = output.stories.map((specifier) => {
         const { path: basePath, recursive, match } = toRequireContext(specifier);
 
         // eslint-disable-next-line no-underscore-dangle
@@ -84,18 +97,23 @@ function configure<TFramework extends AnyFramework>(
     return;
   }
 
-  const { preview, stories } = getConfigPathParts(configPath);
+  const {
+    preview,
+    features = {},
+    stories = [],
+    requireContexts = [],
+  } = getConfigPathParts(configPath);
+
+  global.FEATURES = features;
+  global.STORIES = stories.map((specifier) => ({
+    ...specifier,
+    importPathMatcher: specifier.importPathMatcher.source,
+  }));
 
   if (preview) {
     // This is essentially the same code as lib/core/src/server/preview/virtualModuleEntry.template
-    const {
-      parameters,
-      decorators,
-      globals,
-      globalTypes,
-      argsEnhancers,
-      argTypesEnhancers,
-    } = jest.requireActual(preview);
+    const { parameters, decorators, globals, globalTypes, argsEnhancers, argTypesEnhancers } =
+      jest.requireActual(preview);
 
     if (decorators) {
       decorators.forEach((decorator: DecoratorFunction<TFramework>) =>
@@ -117,8 +135,8 @@ function configure<TFramework extends AnyFramework>(
     }
   }
 
-  if (stories && stories.length) {
-    storybook.configure(stories, false, false);
+  if (requireContexts && requireContexts.length) {
+    storybook.configure(requireContexts, false, false);
   }
 }
 

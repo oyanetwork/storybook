@@ -1,9 +1,9 @@
-import { start } from '@storybook/core/client';
-import { ClientStoryApi, Loadable } from '@storybook/addons';
+import { start } from '@storybook/core';
+import type { ClientStoryApi, Loadable } from '@storybook/addons';
 
 import './globals';
 import { renderToDOM, render } from './render';
-import { IStorybookSection, ServerFramework } from './types';
+import type { IStorybookSection, ServerFramework } from './types';
 
 const framework = 'server';
 
@@ -25,13 +25,7 @@ export const storiesOf: ClientApi['storiesOf'] = (kind, m) => {
 };
 
 export const configure: ClientApi['configure'] = (...args) => api.configure(framework, ...args);
-export const {
-  addDecorator,
-  addParameters,
-  clearDecorators,
-  setAddon,
-  getStorybook,
-  raw,
-} = api.clientApi;
+export const { addDecorator, addParameters, clearDecorators, setAddon, getStorybook, raw } =
+  api.clientApi;
 
 export const { forceReRender } = api;

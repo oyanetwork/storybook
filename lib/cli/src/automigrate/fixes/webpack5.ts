@@ -2,8 +2,8 @@ import chalk from 'chalk';
 import dedent from 'ts-dedent';
 import semver from '@storybook/semver';
 import { ConfigFile, readConfig, writeConfig } from '@storybook/csf-tools';
+import { getStorybookInfo } from '@storybook/core-common';
 import { Fix } from '../types';
-import { getStorybookInfo } from '../helpers/getStorybookInfo';
 import { PackageJsonWithDepsAndDevDeps } from '../../js-package-manager';
 
 const logger = console;
@@ -52,7 +52,7 @@ export const webpack5: Fix<Webpack5RunOptions> & CheckBuilder = {
 
           To upgrade to the latest stable release, run this from your project directory:
 
-          ${chalk.cyan('npx sb upgrade')}
+          ${chalk.cyan('npx storybook upgrade')}
 
           Add the ${chalk.cyan('--prerelease')} flag to get the latest prerelease.
         `.trim()

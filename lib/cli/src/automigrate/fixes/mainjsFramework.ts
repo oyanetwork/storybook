@@ -3,8 +3,8 @@ import dedent from 'ts-dedent';
 
 import semver from '@storybook/semver';
 import { ConfigFile, readConfig, writeConfig } from '@storybook/csf-tools';
+import { getStorybookInfo } from '@storybook/core-common';
 
-import { getStorybookInfo } from '../helpers/getStorybookInfo';
 import { Fix } from '../types';
 
 const logger = console;
@@ -20,6 +20,11 @@ export const mainjsFramework: Fix<MainjsFrameworkRunOptions> = {
   async check({ packageManager }) {
     const packageJson = packageManager.retrievePackageJson();
     const { mainConfig, framework, version: storybookVersion } = getStorybookInfo(packageJson);
+
+    if (!mainConfig) {
+      logger.warn('Unable to find storybook main.js config, skipping');
+      return null;
+    }
 
     const storybookCoerced = storybookVersion && semver.coerce(storybookVersion)?.version;
     if (!storybookCoerced) {

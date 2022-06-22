@@ -1,7 +1,7 @@
 module.exports = {
   toc: [
     {
-      title: '🚀 Get Started',
+      title: '🚀 Get started',
       pathSegment: 'get-started',
       type: 'menu',
       children: [
@@ -41,15 +41,10 @@ module.exports = {
           type: 'bullet-link',
           description: 'Take your Storybook skills to the next level',
         },
-        {
-          title: '📚 Examples',
-          pathSegment: 'examples',
-          type: 'link',
-        },
       ],
     },
     {
-      title: '🖋 Writing Stories',
+      title: '🖋 Write stories',
       pathSegment: 'writing-stories',
       type: 'menu',
       children: [
@@ -74,6 +69,11 @@ module.exports = {
           type: 'link',
         },
         {
+          pathSegment: 'play-function',
+          title: 'Play function',
+          type: 'link',
+        },
+        {
           pathSegment: 'loaders',
           title: 'Loaders',
           type: 'link',
@@ -83,10 +83,20 @@ module.exports = {
           title: 'Naming components and hierarchy',
           type: 'link',
         },
+        {
+          pathSegment: 'build-pages-with-storybook',
+          title: 'Build pages and screens',
+          type: 'link',
+        },
+        {
+          pathSegment: 'stories-for-multiple-components',
+          title: 'Stories for multiple components',
+          type: 'link',
+        },
       ],
     },
     {
-      title: '📖 Writing Docs',
+      title: '📖 Write docs',
       pathSegment: 'writing-docs',
       type: 'menu',
       children: [
@@ -106,13 +116,129 @@ module.exports = {
           type: 'link',
         },
         {
-          pathSegment: 'doc-blocks',
+          pathSegment: '',
           title: 'Doc Blocks',
-          type: 'link',
+          type: 'menu',
+          children: [
+            {
+              pathSegment: 'doc-block-argstable',
+              title: 'ArgsTable',
+              type: 'link',
+            },
+            {
+              pathSegment: 'doc-block-canvas',
+              title: 'Canvas',
+              type: 'link',
+            },
+            {
+              pathSegment: 'doc-block-colorpalette',
+              title: 'ColorPalette',
+              type: 'link',
+            },
+            {
+              pathSegment: 'doc-block-description',
+              title: 'Description',
+              type: 'link',
+            },
+            {
+              pathSegment: 'doc-block-icongallery',
+              title: 'IconGallery',
+              type: 'link',
+            },
+            {
+              pathSegment: 'doc-block-source',
+              title: 'Source',
+              type: 'link',
+            },
+            {
+              pathSegment: 'doc-block-story',
+              title: 'Story',
+              type: 'link',
+            },
+            {
+              pathSegment: 'doc-block-typeset',
+              title: 'Typeset',
+              type: 'link',
+            },
+          ],
         },
         {
           pathSegment: 'build-documentation',
           title: 'Preview and build docs',
+          type: 'link',
+        },
+      ],
+    },
+    {
+      title: '🔬 Testing',
+      pathSegment: 'writing-tests',
+      type: 'menu',
+      children: [
+        {
+          pathSegment: 'introduction',
+          title: 'Introduction',
+          type: 'link',
+        },
+        {
+          pathSegment: 'test-runner',
+          title: 'Test runner',
+          type: 'link',
+        },
+        {
+          pathSegment: 'visual-testing',
+          title: 'Visual tests',
+          type: 'link',
+        },
+        {
+          pathSegment: 'accessibility-testing',
+          title: 'Accessibility tests',
+          type: 'link',
+        },
+        {
+          pathSegment: 'interaction-testing',
+          title: 'Interaction tests',
+          type: 'link',
+        },
+        {
+          pathSegment: 'snapshot-testing',
+          title: 'Snapshot tests',
+          type: 'link',
+        },
+        {
+          pathSegment: 'importing-stories-in-tests',
+          title: 'Import stories in tests',
+          type: 'link',
+        },
+      ],
+    },
+    {
+      title: '🔖 Sharing',
+      pathSegment: 'sharing',
+      type: 'menu',
+      children: [
+        {
+          pathSegment: 'publish-storybook',
+          title: 'Publish',
+          type: 'link',
+        },
+        {
+          pathSegment: 'embed',
+          title: 'Embed',
+          type: 'link',
+        },
+        {
+          pathSegment: 'design-integrations',
+          title: 'Design integrations',
+          type: 'link',
+        },
+        {
+          pathSegment: 'storybook-composition',
+          title: 'Composition',
+          type: 'link',
+        },
+        {
+          pathSegment: 'package-composition',
+          title: 'Package Composition',
           type: 'link',
         },
       ],
@@ -157,6 +283,63 @@ module.exports = {
           title: 'Measure & Outline',
           type: 'link',
         },
+        {
+          pathSegment: 'interactions',
+          title: 'Interactions',
+          type: 'link',
+        },
+      ],
+    },
+    {
+      title: '🔧 Addons',
+      pathSegment: 'addons',
+      type: 'menu',
+      children: [
+        {
+          pathSegment: 'introduction',
+          title: 'Introduction',
+          type: 'link',
+        },
+        {
+          pathSegment: 'install-addons',
+          title: 'Install',
+          type: 'link',
+        },
+        {
+          pathSegment: 'writing-addons',
+          title: 'Write',
+          type: 'link',
+        },
+        {
+          pathSegment: 'configure-addons',
+          title: 'Configure addons',
+          type: 'link',
+        },
+        {
+          pathSegment: 'writing-presets',
+          title: 'Write a preset',
+          type: 'link',
+        },
+        {
+          pathSegment: 'addon-catalog',
+          title: 'Add to catalog',
+          type: 'link',
+        },
+        {
+          pathSegment: 'addon-types',
+          title: 'Types of addons',
+          type: 'link',
+        },
+        {
+          pathSegment: 'addon-knowledge-base',
+          title: 'Knowledge base',
+          type: 'link',
+        },
+        {
+          pathSegment: 'addons-api',
+          title: 'Addon API',
+          type: 'link',
+        },
       ],
     },
     {
@@ -175,15 +358,15 @@ module.exports = {
           type: 'link',
         },
         {
+          pathSegment: 'telemetry',
+          title: 'Telemetry',
+          type: 'link',
+        },
+        {
           pathSegment: '',
           title: 'Integration',
           type: 'menu',
           children: [
-            {
-              pathSegment: 'webpack',
-              title: 'Webpack',
-              type: 'link',
-            },
             {
               pathSegment: 'babel',
               title: 'Babel',
@@ -251,123 +434,28 @@ module.exports = {
       ],
     },
     {
-      title: '🔄 Workflows',
-      pathSegment: 'workflows',
+      title: '🧰 Builders',
+      pathSegment: 'builders',
       type: 'menu',
       children: [
         {
-          pathSegment: 'publish-storybook',
-          title: 'Publish Storybook',
-          type: 'link',
-        },
-        {
-          pathSegment: 'build-pages-with-storybook',
-          title: 'Building pages and screens',
-          type: 'link',
-        },
-        {
-          pathSegment: 'stories-for-multiple-components',
-          title: 'Stories for multiple components',
-          type: 'link',
-        },
-        {
-          title: 'Testing with Storybook',
-          // Despite having a child menu, this does not currently affect the path
-          pathSegment: '',
-          type: 'menu',
-          children: [
-            {
-              pathSegment: 'testing-with-storybook',
-              title: 'Introduction',
-              type: 'link',
-            },
-            {
-              pathSegment: 'unit-testing',
-              title: 'Unit testing',
-              type: 'link',
-            },
-            {
-              pathSegment: 'visual-testing',
-              title: 'Visual testing',
-              type: 'link',
-            },
-            {
-              pathSegment: 'interaction-testing',
-              title: 'Interaction testing',
-              type: 'link',
-            },
-            {
-              pathSegment: 'snapshot-testing',
-              title: 'Snapshot testing',
-              type: 'link',
-            },
-          ],
-        },
-        {
-          pathSegment: 'storybook-composition',
-          title: 'Composition',
-          type: 'link',
-        },
-        {
-          pathSegment: 'package-composition',
-          title: 'Package Composition',
-          type: 'link',
-        },
-        {
-          pathSegment: 'faq',
-          title: 'Frequently Asked Questions',
-          type: 'link',
-        },
-      ],
-    },
-    {
-      title: '🔧 Addons',
-      pathSegment: 'addons',
-      type: 'menu',
-      children: [
-        {
-          pathSegment: 'introduction',
+          pathSegment: 'overview',
           title: 'Introduction',
           type: 'link',
         },
         {
-          pathSegment: 'install-addons',
-          title: 'Install',
+          pathSegment: 'vite',
+          title: 'Vite',
           type: 'link',
         },
         {
-          pathSegment: 'writing-addons',
-          title: 'Write',
+          pathSegment: 'webpack',
+          title: 'Webpack',
           type: 'link',
         },
         {
-          pathSegment: 'configure-addons',
-          title: 'Configure addons',
-          type: 'link',
-        },
-        {
-          pathSegment: 'writing-presets',
-          title: 'Write a preset',
-          type: 'link',
-        },
-        {
-          pathSegment: 'addon-catalog',
-          title: 'Add to catalog',
-          type: 'link',
-        },
-        {
-          pathSegment: 'addon-types',
-          title: 'Types of addons',
-          type: 'link',
-        },
-        {
-          pathSegment: 'addon-knowledge-base',
-          title: 'Knowledge base',
-          type: 'link',
-        },
-        {
-          pathSegment: 'addons-api',
-          title: 'Addon API',
+          pathSegment: 'builder-api',
+          title: 'API',
           type: 'link',
         },
       ],
@@ -454,6 +542,11 @@ module.exports = {
           type: 'link',
         },
       ],
+    },
+    {
+      title: '❓ FAQ',
+      pathSegment: 'faq',
+      type: 'link',
     },
   ],
 };

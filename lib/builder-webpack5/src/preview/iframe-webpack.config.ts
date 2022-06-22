@@ -1,27 +1,25 @@
 import path from 'path';
-import { Configuration, DefinePlugin, HotModuleReplacementPlugin, ProgressPlugin } from 'webpack';
+import { DefinePlugin, HotModuleReplacementPlugin, ProgressPlugin, ProvidePlugin } from 'webpack';
+import type { Configuration } from 'webpack';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import CaseSensitivePathsPlugin from 'case-sensitive-paths-webpack-plugin';
-import WatchMissingNodeModulesPlugin from 'react-dev-utils/WatchMissingNodeModulesPlugin';
 import TerserWebpackPlugin from 'terser-webpack-plugin';
 import VirtualModulePlugin from 'webpack-virtual-modules';
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
 
 import themingPaths from '@storybook/theming/paths';
 
+import type { Options, CoreConfig } from '@storybook/core-common';
 import {
   toRequireContextString,
   es6Transpiler,
   stringifyProcessEnvs,
-  nodeModulesPaths,
   handlebars,
   interpolate,
-  Options,
   toImportFn,
   normalizeStories,
   readTemplate,
   loadPreviewOrConfigFile,
-  CoreConfig,
 } from '@storybook/core-common';
 import { createBabelLoader } from './babel-loader-preview';
 
@@ -59,6 +57,7 @@ export default async (options: Options & Record<string, any>): Promise<Configura
     framework,
     frameworkPath,
     presets,
+    previewUrl,
     typescriptOptions,
     modern,
     features,
@@ -95,7 +94,11 @@ export default async (options: Options & Record<string, any>): Promise<Configura
     virtualModuleMapping[storiesPath] = toImportFn(stories);
     const configEntryPath = path.resolve(path.join(workingDir, 'storybook-config-entry.js'));
     virtualModuleMapping[configEntryPath] = handlebars(
-      await readTemplate(path.join(__dirname, 'virtualModuleModernEntry.js.handlebars')),
+      await readTemplate(
+        require.resolve(
+          '@storybook/builder-webpack5/templates/virtualModuleModernEntry.js.handlebars'
+        )
+      ),
       {
         storiesFilename,
         configs,
@@ -119,6 +122,8 @@ export default async (options: Options & Record<string, any>): Promise<Configura
       const clientApi = storybookPaths['@storybook/client-api'];
       const clientLogger = storybookPaths['@storybook/client-logger'];
 
+      // NOTE: although this file is also from the `dist/cjs` directory, it is actually a ESM
+      // file, see https://github.com/storybookjs/storybook/pull/16727#issuecomment-986485173
       virtualModuleMapping[`${configFilename}-generated-config-entry.js`] = interpolate(
         entryTemplate,
         {
@@ -133,7 +138,10 @@ export default async (options: Options & Record<string, any>): Promise<Configura
       const storyTemplate = await readTemplate(
         path.join(__dirname, 'virtualModuleStory.template.js')
       );
-      const storiesFilename = path.resolve(path.join(workingDir, `generated-stories-entry.js`));
+      // NOTE: this file has a `.cjs` extension as it is a CJS file (from `dist/cjs`) and runs
+      // in the user's webpack mode, which may be strict about the use of require/import.
+      // See https://github.com/storybookjs/storybook/issues/14877
+      const storiesFilename = path.resolve(path.join(workingDir, `generated-stories-entry.cjs`));
       virtualModuleMapping[storiesFilename] = interpolate(storyTemplate, { frameworkImportPath })
         // Make sure we also replace quotes for this one
         .replace("'{{stories}}'", stories.map(toRequireContextString).join(','));
@@ -177,10 +185,8 @@ export default async (options: Options & Record<string, any>): Promise<Configura
         chunksSortMode: 'none' as any,
         alwaysWriteToDisk: true,
         inject: false,
-        templateParameters: (compilation, files, templateOptions) => ({
-          compilation,
-          files,
-          options: templateOptions,
+        template,
+        templateParameters: {
           version: packageJson.version,
           globals: {
             CONFIG_TYPE: configType,
@@ -188,6 +194,7 @@ export default async (options: Options & Record<string, any>): Promise<Configura
             FRAMEWORK_OPTIONS: frameworkOptions,
             CHANNEL_OPTIONS: coreOptions?.channelOptions,
             FEATURES: features,
+            PREVIEW_URL: previewUrl,
             STORIES: stories.map((specifier) => ({
               ...specifier,
               importPathMatcher: specifier.importPathMatcher.source,
@@ -196,7 +203,7 @@ export default async (options: Options & Record<string, any>): Promise<Configura
           },
           headHtmlSnippet,
           bodyHtmlSnippet,
-        }),
+        },
         minify: {
           collapseWhitespace: true,
           removeComments: true,
@@ -205,13 +212,12 @@ export default async (options: Options & Record<string, any>): Promise<Configura
           removeStyleLinkTypeAttributes: true,
           useShortDoctype: true,
         },
-        template,
       }),
       new DefinePlugin({
         ...stringifyProcessEnvs(envs),
         NODE_ENV: JSON.stringify(process.env.NODE_ENV),
       }),
-      isProd ? null : new WatchMissingNodeModulesPlugin(nodeModulesPaths),
+      new ProvidePlugin({ process: require.resolve('process/browser.js') }),
       isProd ? null : new HotModuleReplacementPlugin(),
       new CaseSensitivePathsPlugin(),
       quiet ? null : new ProgressPlugin({}),
@@ -232,12 +238,15 @@ export default async (options: Options & Record<string, any>): Promise<Configura
       modules: ['node_modules'].concat(envs.NODE_PATH || []),
       mainFields: [modern ? 'sbmodern' : null, 'browser', 'module', 'main'].filter(Boolean),
       alias: {
-        ...themingPaths,
+        ...(features?.emotionAlias ? themingPaths : {}),
         ...storybookPaths,
         react: path.dirname(require.resolve('react/package.json')),
         'react-dom': path.dirname(require.resolve('react-dom/package.json')),
       },
-      fallback: { path: false },
+      fallback: {
+        path: require.resolve('path-browserify'),
+        assert: require.resolve('browser-assert'),
+      },
     },
     optimization: {
       splitChunks: {
@@ -245,7 +254,7 @@ export default async (options: Options & Record<string, any>): Promise<Configura
       },
       runtimeChunk: true,
       sideEffects: true,
-      usedExports: true,
+      usedExports: isProd,
       moduleIds: 'named',
       minimizer: isProd
         ? [

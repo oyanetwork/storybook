@@ -1,15 +1,10 @@
-import { addParameters } from '@storybook/vue';
-
-const globalParameter = 'globalParameter';
-const chapterParameter = 'chapterParameter';
+const componentParameter = 'componentParameter';
 const storyParameter = 'storyParameter';
-
-addParameters({ globalParameter });
 
 export default {
   title: 'Core/Parameters',
   parameters: {
-    chapterParameter,
+    componentParameter,
   },
 };
 

@@ -83,8 +83,8 @@ const Pane = styled.div<{ index: number; active: ActiveTabsType }>(
   }
 );
 
-const Panels = React.memo((({ children, active }) => (
-  <PanelsContainer>
+const Panels = React.memo((({ children, active, isFullscreen }) => (
+  <PanelsContainer isFullscreen={isFullscreen}>
     {Children.toArray(children).map((item, index) => (
       // eslint-disable-next-line react/no-array-index-key
       <Pane key={index} index={index} active={active}>
@@ -92,16 +92,20 @@ const Panels = React.memo((({ children, active }) => (
       </Pane>
     ))}
   </PanelsContainer>
-)) as FunctionComponent<{ active: ActiveTabsType; children: ReactNode }>);
+)) as FunctionComponent<{ active: ActiveTabsType; children: ReactNode; isFullscreen: boolean }>);
 Panels.displayName = 'Panels';
 
-const PanelsContainer = styled.div({
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  width: '100vw',
-  height: 'calc(100% - 40px)',
-});
+const PanelsContainer = styled.div<{ isFullscreen: boolean }>(
+  {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+  },
+  ({ isFullscreen }) => ({
+    height: isFullscreen ? '100vh' : 'calc(100% - 40px)',
+  })
+);
 
 const Bar = styled.nav(
   {
@@ -131,7 +135,8 @@ export interface Page {
 export interface MobileProps {
   options: {
     initialActive: ActiveTabsType;
-    isToolshown: boolean;
+    showToolbar: boolean;
+    isFullscreen: boolean;
   };
   Sidebar: ComponentType<any>;
   Preview: ComponentType<any>;
@@ -152,21 +157,13 @@ class Mobile extends Component<MobileProps, MobileState> {
 
     const { options } = props;
     this.state = {
-      active: options.initialActive || SIDEBAR,
+      active: options.isFullscreen ? CANVAS : options.initialActive || SIDEBAR,
     };
   }
 
   render() {
-    const {
-      Sidebar,
-      Preview,
-      Panel,
-      Notifications,
-      pages,
-      viewMode,
-      options,
-      docsOnly,
-    } = this.props;
+    const { Sidebar, Preview, Panel, Notifications, pages, viewMode, options, docsOnly } =
+      this.props;
 
     const { active } = this.state;
     return (
@@ -180,11 +177,11 @@ class Mobile extends Component<MobileProps, MobileState> {
           }}
         />
 
-        <Panels active={active}>
+        <Panels active={active} isFullscreen={options.isFullscreen}>
           <Sidebar />
           <div>
             <div hidden={!viewMode}>
-              <Preview isToolshown={options.isToolshown} id="main" viewMode={viewMode} />
+              <Preview showToolbar={options.showToolbar} id="main" viewMode={viewMode} />
             </div>
             {pages.map(({ key, route: Route, render: Content }) => (
               <Route key={key}>
@@ -194,22 +191,30 @@ class Mobile extends Component<MobileProps, MobileState> {
           </div>
           <Panel hidden={!viewMode} />
         </Panels>
-        <Bar>
-          <TabButton onClick={() => this.setState({ active: SIDEBAR })} active={active === SIDEBAR}>
-            Sidebar
-          </TabButton>
-          <TabButton onClick={() => this.setState({ active: CANVAS })} active={active === CANVAS}>
-            {viewMode ? 'Canvas' : null}
-            {pages.map(({ key, route: Route }) => (
-              <Route key={key}>{key}</Route>
-            ))}
-          </TabButton>
-          {viewMode && !docsOnly ? (
-            <TabButton onClick={() => this.setState({ active: ADDONS })} active={active === ADDONS}>
-              Addons
+        {!options.isFullscreen && (
+          <Bar>
+            <TabButton
+              onClick={() => this.setState({ active: SIDEBAR })}
+              active={active === SIDEBAR}
+            >
+              Sidebar
             </TabButton>
-          ) : null}
-        </Bar>
+            <TabButton onClick={() => this.setState({ active: CANVAS })} active={active === CANVAS}>
+              {viewMode ? 'Canvas' : null}
+              {pages.map(({ key, route: Route }) => (
+                <Route key={key}>{key}</Route>
+              ))}
+            </TabButton>
+            {viewMode && !docsOnly ? (
+              <TabButton
+                onClick={() => this.setState({ active: ADDONS })}
+                active={active === ADDONS}
+              >
+                Addons
+              </TabButton>
+            ) : null}
+          </Bar>
+        )}
       </Root>
     );
   }

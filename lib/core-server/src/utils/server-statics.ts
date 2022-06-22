@@ -9,11 +9,11 @@ import favicon from 'serve-favicon';
 
 import dedent from 'ts-dedent';
 
-const defaultFavIcon = require.resolve('../public/favicon.ico');
+const defaultFavIcon = require.resolve('@storybook/core-server/public/favicon.ico');
 
 export async function useStatics(router: any, options: Options) {
   let hasCustomFavicon = false;
-  const staticDirs = await options.presets.apply<StorybookConfig['staticDirs']>('staticDirs', []);
+  const staticDirs = await options.presets.apply<StorybookConfig['staticDirs']>('staticDirs');
 
   if (staticDirs && options.staticDir) {
     throw new Error(dedent`
@@ -25,25 +25,22 @@ export async function useStatics(router: any, options: Options) {
     `);
   }
 
-  staticDirs.forEach(async (dir) => {
-    const staticDirAndTarget = typeof dir === 'string' ? dir : `${dir.from}:${dir.to}`;
-    const { staticPath: from, targetEndpoint: to } = await parseStaticDir(
-      getDirectoryFromWorkingDir({
-        configDir: options.configDir,
-        workingDir: process.cwd(),
-        directory: staticDirAndTarget,
-      })
-    );
+  const statics = staticDirs
+    ? staticDirs.map((dir) => (typeof dir === 'string' ? dir : `${dir.from}:${dir.to}`))
+    : options.staticDir;
 
-    logger.info(chalk`=> Serving static files from {cyan ${from}} at {cyan ${to}}`);
-    router.use(to, express.static(from, { index: false }));
-  });
-
-  if (options.staticDir && options.staticDir.length > 0) {
+  if (statics && statics.length > 0) {
     await Promise.all(
-      options.staticDir.map(async (dir) => {
+      statics.map(async (dir) => {
         try {
-          const { staticDir, staticPath, targetEndpoint } = await parseStaticDir(dir);
+          const relativeDir = staticDirs
+            ? getDirectoryFromWorkingDir({
+                configDir: options.configDir,
+                workingDir: process.cwd(),
+                directory: dir,
+              })
+            : dir;
+          const { staticDir, staticPath, targetEndpoint } = await parseStaticDir(relativeDir);
           logger.info(
             chalk`=> Serving static files from {cyan ${staticDir}} at {cyan ${targetEndpoint}}`
           );
@@ -69,12 +66,20 @@ export async function useStatics(router: any, options: Options) {
 }
 
 export const parseStaticDir = async (arg: string) => {
-  // Split on ':' only if not followed by '\', for Windows compatibility (e.g. 'C:\some\dir')
-  const [rawDir, target = '/'] = arg.split(/:(?!\\)/);
+  // Split on last index of ':', for Windows compatibility (e.g. 'C:\some\dir:\foo')
+  const lastColonIndex = arg.lastIndexOf(':');
+  const isWindowsAbsolute = path.win32.isAbsolute(arg);
+  const isWindowsRawDirOnly = isWindowsAbsolute && lastColonIndex === 1; // e.g. 'C:\some\dir'
+  const splitIndex = lastColonIndex !== -1 && !isWindowsRawDirOnly ? lastColonIndex : arg.length;
+
+  const targetRaw = arg.substring(splitIndex + 1) || '/';
+  const target = targetRaw.split(path.sep).join(path.posix.sep); // Ensure target has forward-slash path
+
+  const rawDir = arg.substring(0, splitIndex);
   const staticDir = path.isAbsolute(rawDir) ? rawDir : `./${rawDir}`;
   const staticPath = path.resolve(staticDir);
   const targetDir = target.replace(/^\/?/, './');
-  const targetEndpoint = targetDir.substr(1);
+  const targetEndpoint = targetDir.substring(1);
 
   if (!(await pathExists(staticPath))) {
     throw new Error(

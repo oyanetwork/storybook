@@ -1,4 +1,5 @@
-import { CLIOptions, LoadOptions, BuilderOptions } from '@storybook/core-common';
+import type { CLIOptions, LoadOptions, BuilderOptions } from '@storybook/core-common';
+import type { BuilderContext } from '@angular-devkit/architect';
 
 export type StandaloneOptions = Partial<
   CLIOptions &
@@ -6,6 +7,11 @@ export type StandaloneOptions = Partial<
     BuilderOptions & {
       mode?: 'static' | 'dev';
       angularBrowserTarget?: string | null;
+      angularBuilderOptions?: Record<string, any> & {
+        styles?: any[];
+        stylePreprocessorOptions?: any;
+      };
+      angularBuilderContext?: BuilderContext | null;
       tsConfig?: string;
     }
 >;

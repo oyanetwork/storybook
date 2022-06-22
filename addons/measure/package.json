@@ -1,6 +1,6 @@
 {
   "name": "@storybook/addon-measure",
-  "version": "6.4.0-beta.27",
+  "version": "6.5.0-rc.1",
   "description": "Inspect layouts by visualizing the box model",
   "keywords": [
     "storybook-addons",
@@ -44,12 +44,12 @@
     "prepare": "node ../../scripts/prepare.js"
   },
   "dependencies": {
-    "@storybook/addons": "6.4.0-beta.27",
-    "@storybook/api": "6.4.0-beta.27",
-    "@storybook/client-logger": "6.4.0-beta.27",
-    "@storybook/components": "6.4.0-beta.27",
-    "@storybook/core-events": "6.4.0-beta.27",
-    "@storybook/csf": "0.0.2--canary.87bc651.0",
+    "@storybook/addons": "6.5.0-rc.1",
+    "@storybook/api": "6.5.0-rc.1",
+    "@storybook/client-logger": "6.5.0-rc.1",
+    "@storybook/components": "6.5.0-rc.1",
+    "@storybook/core-events": "6.5.0-rc.1",
+    "@storybook/csf": "0.0.2--canary.4566f4d.1",
     "core-js": "^3.8.2",
     "global": "^4.4.0"
   },
@@ -57,8 +57,8 @@
     "@types/webpack-env": "^1.16.0"
   },
   "peerDependencies": {
-    "react": "^16.8.0 || ^17.0.0",
-    "react-dom": "^16.8.0 || ^17.0.0"
+    "react": "^16.8.0 || ^17.0.0 || ^18.0.0",
+    "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -71,7 +71,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "gitHead": "b73d9e79cf41328a21eb5f8c1490f450abaf4142",
+  "gitHead": "3f09d4e6b0c655a092dc812488ef2c7ed3808401",
   "sbmodern": "dist/modern/index.js",
   "storybook": {
     "displayName": "Measure",

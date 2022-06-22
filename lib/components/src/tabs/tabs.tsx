@@ -5,6 +5,7 @@ import React, {
   FunctionComponent,
   memo,
   MouseEvent,
+  ReactElement,
   ReactNode,
 } from 'react';
 import { styled } from '@storybook/theming';
@@ -13,9 +14,6 @@ import { sanitize } from '@storybook/csf';
 import { Placeholder } from '../placeholder/placeholder';
 import { FlexBar } from '../bar/bar';
 import { TabButton } from '../bar/button';
-
-const ignoreSsrWarning =
-  '/* emotion-disable-server-rendering-unsafe-selector-warning-please-do-not-use-this-the-warning-exists-for-a-reason */';
 
 export interface WrapperProps {
   bordered?: boolean;
@@ -86,7 +84,7 @@ const Content = styled.div<ContentProps>(
           bottom: 0 + (bordered ? 1 : 0),
           top: 40 + (bordered ? 1 : 0),
           overflow: 'auto',
-          [`& > *:first-child${ignoreSsrWarning}`]: {
+          [`& > *:first-child`]: {
             position: 'absolute',
             left: 0 + (bordered ? 1 : 0),
             right: 0 + (bordered ? 1 : 0),
@@ -121,7 +119,7 @@ export const panelProps = {};
 
 const childrenToList = (children: any, selected: string) =>
   Children.toArray(children).map(
-    ({ props: { title, id, color, children: childrenOfChild } }: React.ReactElement, index) => {
+    ({ props: { title, id, color, children: childrenOfChild } }: ReactElement, index) => {
       const content = Array.isArray(childrenOfChild) ? childrenOfChild[0] : childrenOfChild;
       return {
         active: selected ? id === selected : index === 0,

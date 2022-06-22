@@ -1,22 +1,22 @@
 import React, { AnchorHTMLAttributes, ButtonHTMLAttributes, DetailedHTMLProps } from 'react';
 import { styled, isPropValid } from '@storybook/theming';
-import { darken, transparentize } from 'polished';
+import { transparentize } from 'polished';
 import { auto } from '@popperjs/core';
 
-interface ButtonProps
+interface BarButtonProps
   extends DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement> {
   href?: void;
 }
-interface LinkProps
+interface BarLinkProps
   extends DetailedHTMLProps<AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement> {
   href: string;
 }
 
-const ButtonOrLink = ({ children, ...restProps }: ButtonProps | LinkProps) =>
+const ButtonOrLink = ({ children, ...restProps }: BarButtonProps | BarLinkProps) =>
   restProps.href != null ? (
-    <a {...(restProps as LinkProps)}>{children}</a>
+    <a {...(restProps as BarLinkProps)}>{children}</a>
   ) : (
-    <button type="button" {...(restProps as ButtonProps)}>
+    <button type="button" {...(restProps as BarButtonProps)}>
       {children}
     </button>
   );
@@ -74,10 +74,11 @@ TabButton.displayName = 'TabButton';
 
 export interface IconButtonProps {
   active?: boolean;
+  disabled?: boolean;
 }
 
 export const IconButton = styled(ButtonOrLink, { shouldForwardProp: isPropValid })<IconButtonProps>(
-  ({ theme }) => ({
+  () => ({
     alignItems: 'center',
     background: 'transparent',
     border: 'none',
@@ -92,16 +93,6 @@ export const IconButton = styled(ButtonOrLink, { shouldForwardProp: isPropValid 
     marginTop: 6,
     padding: '8px 7px',
 
-    '&:hover, &:focus-visible': {
-      background: transparentize(0.88, theme.color.secondary),
-      color: theme.color.secondary,
-    },
-    '&:focus-visible': {
-      outline: auto, // Ensures links have the same focus style
-    },
-    '&:focus:not(:focus-visible)': {
-      outline: 'none',
-    },
     '& > svg': {
       width: 14,
     },
@@ -112,6 +103,43 @@ export const IconButton = styled(ButtonOrLink, { shouldForwardProp: isPropValid 
           backgroundColor: theme.background.hoverable,
           color: theme.color.secondary,
         }
-      : {}
+      : {},
+  ({ disabled, theme }) =>
+    disabled
+      ? {
+          opacity: 0.5,
+          cursor: 'not-allowed',
+        }
+      : {
+          '&:hover, &:focus-visible': {
+            background: transparentize(0.88, theme.color.secondary),
+            color: theme.color.secondary,
+          },
+          '&:focus-visible': {
+            outline: auto, // Ensures links have the same focus style
+          },
+          '&:focus:not(:focus-visible)': {
+            outline: 'none',
+          },
+        }
 );
 IconButton.displayName = 'IconButton';
+
+const IconPlaceholder = styled.div(({ theme }) => ({
+  width: 14,
+  height: 14,
+  backgroundColor: theme.appBorderColor,
+  animation: `${theme.animation.glow} 1.5s ease-in-out infinite`,
+}));
+
+const IconButtonSkeletonWrapper = styled.div(() => ({
+  marginTop: 6,
+  padding: 7,
+  height: 28,
+}));
+
+export const IconButtonSkeleton = () => (
+  <IconButtonSkeletonWrapper>
+    <IconPlaceholder />
+  </IconButtonSkeletonWrapper>
+);

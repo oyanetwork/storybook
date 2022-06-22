@@ -1,7 +1,7 @@
 ```md
-<!--- Badge.stories.mdx --->
+<!-- Badge.stories.mdx -->
 
-import { Meta, Story, Canvas } from '@storybook/addon-docs';
+import { Canvas, Meta, Story } from '@storybook/addon-docs';
 
 import { Badge } from './Badge';
 import { Icon } from './Icon';
@@ -32,15 +32,12 @@ with unique URLs and isolated snapshot tests.
   <Story name="warning">
     <Badge status="warning">Warning</Badge>
   </Story>
-
   <Story name="neutral">
     <Badge status="neutral">Neutral</Badge>
   </Story>
-
   <Story name="error">
     <Badge status="error">Error</Badge>
   </Story>
-  
   <Story name="with icon">
     <Badge status="warning">
       <Icon icon="check" inline />

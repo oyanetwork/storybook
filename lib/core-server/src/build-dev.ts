@@ -1,16 +1,19 @@
 import { logger, instance as npmLog } from '@storybook/node-logger';
+import prompts from 'prompts';
 import {
   CLIOptions,
   LoadOptions,
   BuilderOptions,
+  Options,
+  StorybookConfig,
+  CoreConfig,
   resolvePathInStorybookCache,
   loadAllPresets,
-  Options,
   cache,
-  StorybookConfig,
 } from '@storybook/core-common';
+import { telemetry } from '@storybook/telemetry';
 import dedent from 'ts-dedent';
-import prompts from 'prompts';
+import global from 'global';
 
 import path from 'path';
 import { storybookDevServer } from './dev-server';
@@ -75,6 +78,7 @@ export async function buildDevStandalone(options: CLIOptions & LoadOptions & Bui
   });
 
   const features = await presets.apply<StorybookConfig['features']>('features');
+  global.FEATURES = features;
 
   const fullOptions: Options = {
     ...options,
@@ -100,11 +104,13 @@ export async function buildDevStandalone(options: CLIOptions & LoadOptions & Bui
   if (options.smokeTest) {
     // @ts-ignore
     const managerWarnings = (managerStats && managerStats.toJson().warnings) || [];
-    if (managerWarnings.length > 0) logger.warn(`manager: ${managerWarnings}`);
+    if (managerWarnings.length > 0)
+      logger.warn(`manager: ${JSON.stringify(managerWarnings, null, 2)}`);
     // I'm a little reticent to import webpack types in this file :shrug:
     // @ts-ignore
     const previewWarnings = (previewStats && previewStats.toJson().warnings) || [];
-    if (previewWarnings.length > 0) logger.warn(`preview: ${previewWarnings}`);
+    if (previewWarnings.length > 0)
+      logger.warn(`preview: ${JSON.stringify(previewWarnings, null, 2)}`);
     process.exit(
       managerWarnings.length > 0 || (previewWarnings.length > 0 && !options.ignorePreview) ? 1 : 0
     );
@@ -112,7 +118,7 @@ export async function buildDevStandalone(options: CLIOptions & LoadOptions & Bui
   }
 
   // Get package name and capitalize it e.g. @storybook/react -> React
-  const packageName = name.split('@storybook/').length > 0 ? name.split('@storybook/')[1] : name;
+  const packageName = name.split('@storybook/').length > 1 ? name.split('@storybook/')[1] : name;
   const frameworkName = packageName.charAt(0).toUpperCase() + packageName.slice(1);
 
   outputStartupInformation({
@@ -128,17 +134,18 @@ export async function buildDevStandalone(options: CLIOptions & LoadOptions & Bui
 
 export async function buildDev(loadOptions: LoadOptions) {
   const cliOptions = await getDevCli(loadOptions.packageJson);
+  const options: CLIOptions & LoadOptions & BuilderOptions = {
+    ...cliOptions,
+    ...loadOptions,
+    configDir: loadOptions.configDir || cliOptions.configDir || './.storybook',
+    configType: 'DEVELOPMENT',
+    ignorePreview: !!cliOptions.previewUrl && !cliOptions.forceBuildPreview,
+    docsMode: !!cliOptions.docs,
+    cache,
+  };
 
   try {
-    await buildDevStandalone({
-      ...cliOptions,
-      ...loadOptions,
-      configDir: loadOptions.configDir || cliOptions.configDir || './.storybook',
-      configType: 'DEVELOPMENT',
-      ignorePreview: !!cliOptions.previewUrl && !cliOptions.forceBuildPreview,
-      docsMode: !!cliOptions.docs,
-      cache,
-    });
+    await buildDevStandalone(options);
   } catch (error) {
     // this is a weird bugfix, somehow 'node-pre-gyp' is polluting the npmLog header
     npmLog.heading = '';
@@ -169,6 +176,56 @@ export async function buildDev(loadOptions: LoadOptions) {
     );
     logger.line();
 
+    const presets = loadAllPresets({
+      corePresets: [require.resolve('./presets/common-preset')],
+      overridePresets: [],
+      ...options,
+    });
+
+    const core = await presets.apply<CoreConfig>('core');
+    if (!core?.disableTelemetry) {
+      let enableCrashReports;
+      if (core.enableCrashReports !== undefined) {
+        enableCrashReports = core.enableCrashReports;
+      } else {
+        const valueFromCache = await cache.get('enableCrashreports');
+        if (valueFromCache !== undefined) {
+          enableCrashReports = valueFromCache;
+        } else {
+          const valueFromPrompt = await promptCrashReports(options);
+          if (valueFromPrompt !== undefined) {
+            enableCrashReports = valueFromPrompt;
+          }
+        }
+      }
+
+      await telemetry(
+        'error-dev',
+        { error },
+        {
+          immediate: true,
+          configDir: options.configDir,
+          enableCrashReports,
+        }
+      );
+    }
     process.exit(1);
   }
 }
+
+const promptCrashReports = async ({ packageJson }: CLIOptions & LoadOptions & BuilderOptions) => {
+  if (process.env.CI) {
+    return undefined;
+  }
+
+  const { enableCrashReports } = await prompts({
+    type: 'confirm',
+    name: 'enableCrashReports',
+    message: `Would you like to send crash reports to Storybook?`,
+    initial: true,
+  });
+
+  await cache.set('enableCrashreports', enableCrashReports);
+
+  return enableCrashReports;
+};

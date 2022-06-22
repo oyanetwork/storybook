@@ -2,13 +2,7 @@
 title: 'DocsPage'
 ---
 
-<div class="aside">
-
-💡 <strong>NOTE</strong>: Currently there's an issue when using MDX stories with IE11. This issue does <strong>not</strong> apply to DocsPage. If you're interested in helping us fix this issue, read our <a href="https://github.com/storybookjs/storybook/blob/next/CONTRIBUTING.md">Contribution guidelines</a> and submit a pull request.
-
-</div>
-
-When you install [Storybook Docs](https://storybook.js.org/addons/@storybook/addon-docs), DocsPage is the zero-config default documentation that all stories get out of the box. It aggregates your [stories](../get-started/whats-a-story.md), text descriptions, docgen comments, [args tables](./doc-blocks.md#argstable), and code examples into a single page for each component.
+When you install [Storybook Docs](https://storybook.js.org/addons/@storybook/addon-docs), DocsPage is the zero-config default documentation that all stories get out of the box. It aggregates your [stories](../get-started/whats-a-story.md), text descriptions, docgen comments, [args tables](./doc-block-argstable.md), and code examples into a single page for each component.
 
 The best practice for docs is for each component to have its own set of documentation and stories.
 
@@ -125,7 +119,7 @@ Then, update your `tsconfig.json` to include the following:
 }
 ```
 
-Finally write your custom React component and and update the `docs.page` [parameter](../writing-stories/parameters.md) to render the custom documentation.
+Finally write your custom React component and update the `docs.page` [parameter](../writing-stories/parameters.md) to render the custom documentation.
 
 <!-- prettier-ignore-start -->
 
@@ -158,11 +152,11 @@ Here's an example of rebuilding DocsPage for the Button component using doc bloc
 
 <!-- prettier-ignore-end -->
 
-In addition, you can interleave your own components to customize the auto-generated contents of the page or pass in different options to the blocks to customize their appearance. Read more about [Doc Blocks](./doc-blocks.md).
+In addition, you can interleave your own components to customize the auto-generated contents of the page or pass in different options to the blocks to customize their appearance.
 
 ## Story file names
 
-Unless you use a custom [webpack configuration](../configure/webpack.md#extending-storybooks-webpack-config), all of your story files should have the suffix `*.stories.@(j|t)sx?`. For example, "Badge.stories.js" or "Badge.stories.tsx". This tells Storybook and its docs preset to display the docs based on the file contents.
+Unless you use a custom [Webpack configuration](../builders/webpack.md#extending-storybooks-webpack-config), all of your story files should have the suffix `*.stories.@(j|t)sx?`. For example, "Badge.stories.js" or "Badge.stories.tsx". This tells Storybook and its docs preset to display the docs based on the file contents.
 
 ## Inline stories vs. iframe stories
 
@@ -176,14 +170,15 @@ Therefore, we recommend inline rendering where possible. It's the default mode f
 
 To toggle the between the two settings, set `docs.inlineStories` in `.storybook/preview.js`. Like most [parameters](../writing-stories/parameters.md), you can also toggle at the component or story level:
 
-```js
-export const parameters = {
-  docs: {
-    // opt-out of inline rendering
-    inlineStories: false,
-  },
-};
-```
+<!-- prettier-ignore-start -->
+
+<CodeSnippets
+  paths={[
+    'common/storybook-preview-optout-inline.js.mdx',
+  ]}
+/>
+
+<!-- prettier-ignore-end -->
 
 ### Custom inline rendering
 

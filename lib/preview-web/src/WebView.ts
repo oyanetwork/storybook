@@ -2,10 +2,13 @@ import global from 'global';
 import { logger } from '@storybook/client-logger';
 import AnsiToHtml from 'ansi-to-html';
 import dedent from 'ts-dedent';
+import qs from 'qs';
 
 import { Story } from '@storybook/store';
 
 const { document } = global;
+
+const PREPARING_DELAY = 100;
 
 const layoutClassMap = {
   centered: 'sb-main-centered',
@@ -14,7 +17,16 @@ const layoutClassMap = {
 } as const;
 type Layout = keyof typeof layoutClassMap | 'none';
 
-const classes = {
+enum Mode {
+  'MAIN' = 'MAIN',
+  'NOPREVIEW' = 'NOPREVIEW',
+  'PREPARING_STORY' = 'PREPARING_STORY',
+  'PREPARING_DOCS' = 'PREPARING_DOCS',
+  'ERROR' = 'ERROR',
+}
+const classes: Record<Mode, string> = {
+  PREPARING_STORY: 'sb-show-preparing-story',
+  PREPARING_DOCS: 'sb-show-preparing-docs',
   MAIN: 'sb-show-main',
   NOPREVIEW: 'sb-show-nopreview',
   ERROR: 'sb-show-errordisplay',
@@ -26,6 +38,30 @@ const ansiConverter = new AnsiToHtml({
 
 export class WebView {
   currentLayoutClass?: typeof layoutClassMap[keyof typeof layoutClassMap] | null;
+
+  testing = false;
+
+  preparingTimeout: ReturnType<typeof setTimeout> = null;
+
+  constructor() {
+    // Special code for testing situations
+    const { __SPECIAL_TEST_PARAMETER__ } = qs.parse(document.location.search, {
+      ignoreQueryPrefix: true,
+    });
+    switch (__SPECIAL_TEST_PARAMETER__) {
+      case 'preparing-story': {
+        this.showPreparingStory();
+        this.testing = true;
+        break;
+      }
+      case 'preparing-docs': {
+        this.showPreparingDocs();
+        this.testing = true;
+        break;
+      }
+      default: // pass;
+    }
+  }
 
   // Get ready to render a story, returning the element to render to
   prepareForStory(story: Story<any>) {
@@ -78,32 +114,62 @@ export class WebView {
     }
   }
 
+  showMode(mode: Mode) {
+    clearTimeout(this.preparingTimeout);
+    Object.keys(Mode).forEach((otherMode) => {
+      if (otherMode === mode) {
+        document.body.classList.add(classes[otherMode]);
+      } else {
+        document.body.classList.remove(classes[otherMode as Mode]);
+      }
+    });
+  }
+
   showErrorDisplay({ message = '', stack = '' }) {
-    document.getElementById('error-message').innerHTML = ansiConverter.toHtml(message);
-    document.getElementById('error-stack').innerHTML = ansiConverter.toHtml(stack);
+    let header = message;
+    let detail = stack;
+    const parts = message.split('\n');
+    if (parts.length > 1) {
+      [header] = parts;
+      detail = parts.slice(1).join('\n');
+    }
 
-    document.body.classList.remove(classes.MAIN);
-    document.body.classList.remove(classes.NOPREVIEW);
+    document.getElementById('error-message').innerHTML = ansiConverter.toHtml(header);
+    document.getElementById('error-stack').innerHTML = ansiConverter.toHtml(detail);
 
-    document.body.classList.add(classes.ERROR);
+    this.showMode(Mode.ERROR);
   }
 
   showNoPreview() {
-    document.body.classList.remove(classes.MAIN);
-    document.body.classList.remove(classes.ERROR);
+    if (this.testing) return;
 
-    document.body.classList.add(classes.NOPREVIEW);
+    this.showMode(Mode.NOPREVIEW);
 
     // In storyshots this can get called and these two can be null
     this.storyRoot()?.setAttribute('hidden', 'true');
     this.docsRoot()?.setAttribute('hidden', 'true');
   }
 
-  showMain() {
-    document.body.classList.remove(classes.NOPREVIEW);
-    document.body.classList.remove(classes.ERROR);
+  showPreparingStory({ immediate = false } = {}) {
+    clearTimeout(this.preparingTimeout);
 
-    document.body.classList.add(classes.MAIN);
+    if (immediate) {
+      this.showMode(Mode.PREPARING_STORY);
+    } else {
+      this.preparingTimeout = setTimeout(
+        () => this.showMode(Mode.PREPARING_STORY),
+        PREPARING_DELAY
+      );
+    }
+  }
+
+  showPreparingDocs() {
+    clearTimeout(this.preparingTimeout);
+    this.preparingTimeout = setTimeout(() => this.showMode(Mode.PREPARING_DOCS), PREPARING_DELAY);
+  }
+
+  showMain() {
+    this.showMode(Mode.MAIN);
   }
 
   showDocs() {
@@ -114,5 +180,14 @@ export class WebView {
   showStory() {
     this.docsRoot().setAttribute('hidden', 'true');
     this.storyRoot().removeAttribute('hidden');
+  }
+
+  showStoryDuringRender() {
+    // When 'showStory' is called (at the start of rendering) we get rid of our display:none
+    // from all children of the root (but keep the preparing spinner visible). This may mean
+    // that very weird and high z-index stories are briefly visible.
+    // See https://github.com/storybookjs/storybook/issues/16847 and
+    //   http://localhost:9011/?path=/story/core-rendering--auto-focus (official SB)
+    document.body.classList.add(classes.MAIN);
   }
 }

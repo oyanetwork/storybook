@@ -1,7 +1,7 @@
 import path from 'path';
 import semver from '@storybook/semver';
 import {
-  isDefaultProjectSet,
+  checkForProjects,
   editStorybookTsConfig,
   getAngularAppTsConfigJson,
   getAngularAppTsConfigPath,
@@ -28,19 +28,16 @@ function editAngularAppTsConfig() {
 }
 
 const generator: Generator = async (packageManager, npmOptions, options) => {
-  if (!isDefaultProjectSet()) {
-    throw new Error(
-      'Could not find a default project in your Angular workspace.\nSet a defaultProject in your angular.json and re-run the installation.'
-    );
-  }
+  checkForProjects();
+
   const angularVersion = semver.coerce(
     packageManager.retrievePackageJson().dependencies['@angular/core']
   )?.version;
   const isWebpack5 = semver.gte(angularVersion, '12.0.0');
   const updatedOptions = isWebpack5 ? { ...options, builder: CoreBuilder.Webpack5 } : options;
 
-  baseGenerator(packageManager, npmOptions, updatedOptions, 'angular', {
-    extraPackages: ['@compodoc/compodoc', '@angular/elements', '@webcomponents/custom-elements'],
+  await baseGenerator(packageManager, npmOptions, updatedOptions, 'angular', {
+    extraPackages: ['@compodoc/compodoc'],
     addScripts: false,
   });
   copyTemplate(__dirname);

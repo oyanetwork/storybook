@@ -10,7 +10,7 @@ type TsConfig = {
 
 export function getAngularAppTsConfigPath() {
   const angularJson = readFileAsJson('angular.json', true);
-  const { defaultProject } = angularJson;
+  const defaultProject = getDefaultProjectName(angularJson);
   const tsConfigPath = angularJson.projects[defaultProject].architect.build.options.tsConfig;
 
   if (!tsConfigPath || !fs.existsSync(path.resolve(tsConfigPath))) {
@@ -50,9 +50,33 @@ export function editStorybookTsConfig(tsconfigPath: string) {
   writeFileAsJson(tsconfigPath, tsConfigJson);
 }
 
-export function isDefaultProjectSet() {
-  const angularJson = readFileAsJson('angular.json', true);
-  return angularJson && !!angularJson.defaultProject;
+export function getDefaultProjectName(angularJson: any): string | undefined {
+  const { defaultProject, projects } = angularJson;
+
+  if (projects?.storybook) {
+    return 'storybook';
+  }
+
+  if (defaultProject) {
+    return defaultProject;
+  }
+
+  const firstProjectName = projects ? Object.keys(projects)[0] : undefined;
+  if (firstProjectName) {
+    return firstProjectName;
+  }
+
+  return undefined;
+}
+
+export function checkForProjects() {
+  const { projects } = readFileAsJson('angular.json', true);
+
+  if (!projects || Object.keys(projects).length === 0) {
+    throw new Error(
+      'Could not find a project in your Angular workspace. \nAdd a project and re-run the installation'
+    );
+  }
 }
 
 export async function getBaseTsConfigName() {

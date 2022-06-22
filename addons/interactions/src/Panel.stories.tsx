@@ -1,10 +1,12 @@
 import React from 'react';
+import { action } from '@storybook/addon-actions';
 import { ComponentStoryObj, ComponentMeta } from '@storybook/react';
 import { CallStates } from '@storybook/instrumenter';
 import { styled } from '@storybook/theming';
 
-import { getCall } from './mocks';
+import { getCalls, getInteractions } from './mocks';
 import { AddonPanelPure } from './Panel';
+import SubnavStories from './components/Subnav/Subnav.stories';
 
 const StyledWrapper = styled.div(({ theme }) => ({
   backgroundColor: theme.background.content,
@@ -17,6 +19,8 @@ const StyledWrapper = styled.div(({ theme }) => ({
   bottom: 0,
   overflow: 'auto',
 }));
+
+const interactions = getInteractions(CallStates.DONE);
 
 export default {
   title: 'Addons/Interactions/Panel',
@@ -32,17 +36,15 @@ export default {
     layout: 'fullscreen',
   },
   args: {
-    calls: new Map(),
-    endRef: null,
+    calls: new Map(getCalls(CallStates.DONE).map((call) => [call.id, call])),
+    controls: SubnavStories.args.controls,
+    controlStates: SubnavStories.args.controlStates,
+    interactions,
     fileName: 'addon-interactions.stories.tsx',
     hasException: false,
-    hasNext: false,
-    hasPrevious: true,
-    interactions: [getCall(CallStates.DONE)],
-    isDisabled: false,
     isPlaying: false,
-    showTabIcon: false,
-    isDebuggingEnabled: true,
+    onScrollToEnd: action('onScrollToEnd'),
+    endRef: null,
     // prop for the AddonPanel used as wrapper of Panel
     active: true,
   },
@@ -52,33 +54,42 @@ type Story = ComponentStoryObj<typeof AddonPanelPure>;
 
 export const Passing: Story = {
   args: {
-    interactions: [getCall(CallStates.DONE)],
+    interactions: getInteractions(CallStates.DONE),
   },
 };
 
 export const Paused: Story = {
   args: {
     isPlaying: true,
-    interactions: [getCall(CallStates.WAITING)],
+    interactions: getInteractions(CallStates.WAITING),
+    controlStates: {
+      debugger: true,
+      start: false,
+      back: false,
+      goto: true,
+      next: true,
+      end: true,
+    },
+    pausedAt: interactions[interactions.length - 1].id,
   },
 };
 
 export const Playing: Story = {
   args: {
     isPlaying: true,
-    interactions: [getCall(CallStates.ACTIVE)],
+    interactions: getInteractions(CallStates.ACTIVE),
   },
 };
 
 export const Failed: Story = {
   args: {
     hasException: true,
-    interactions: [getCall(CallStates.ERROR)],
+    interactions: getInteractions(CallStates.ERROR),
   },
 };
 
 export const WithDebuggingDisabled: Story = {
-  args: { isDebuggingEnabled: false },
+  args: { controlStates: { ...SubnavStories.args.controlStates, debugger: false } },
 };
 
 export const NoInteractions: Story = {

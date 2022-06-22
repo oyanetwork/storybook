@@ -1,7 +1,9 @@
 import path from 'path';
-import { writeJSON } from 'fs-extra';
+import { readJSON, writeJSON, outputFile } from 'fs-extra';
 import shell, { ExecOptions } from 'shelljs';
 import chalk from 'chalk';
+import { cra, cra_typescript } from './configs';
+import storybookVersions from '../versions';
 
 const logger = console;
 
@@ -20,6 +22,11 @@ export interface Parameters {
   ensureDir?: boolean;
   /** Dependencies to add before building Storybook */
   additionalDeps?: string[];
+  /** Files to add before installing Storybook */
+  additionalFiles?: {
+    path: string;
+    contents: string;
+  }[];
   /** Add typescript dependency and creates a tsconfig.json file */
   typescript?: boolean;
 }
@@ -52,30 +59,49 @@ export const exec = async (
     const defaultOptions: ExecOptions = {
       silent: true,
     };
-    shell.exec(command, { ...defaultOptions, ...options }, (code, stdout, stderr) => {
+    const child = shell.exec(command, { ...defaultOptions, ...options, async: true });
+
+    child.stderr.pipe(process.stderr);
+    child.stdout.pipe(process.stdout);
+
+    child.on('exit', (code) => {
       if (code === 0) {
         resolve(undefined);
       } else {
         logger.error(chalk.red(`An error occurred while executing: \`${command}\``));
-        logger.error(`Command output was:${chalk.yellow(`\n${stdout}\n${stderr}`)}`);
-        if (errorMessage) {
-          logger.error(errorMessage);
-        }
+        logger.log(errorMessage);
         reject(new Error(`command exited with code: ${code}: `));
       }
     });
   });
 };
 
-const installYarn2 = async ({ cwd, pnp }: Options) => {
+const addPackageResolutions = async ({ cwd }: Options) => {
+  logger.info(`🔢 Adding package resolutions:`);
+  const packageJsonPath = path.join(cwd, 'package.json');
+  const packageJson = await readJSON(packageJsonPath);
+  packageJson.resolutions = storybookVersions;
+  await writeJSON(packageJsonPath, packageJson, { spaces: 2 });
+};
+
+const installYarn2 = async ({ cwd, pnp, name }: Options) => {
   const command = [
     `yarn set version berry`,
     `yarn config set enableGlobalCache true`,
     `yarn config set nodeLinker ${pnp ? 'pnp' : 'node-modules'}`,
-  ].join(' && ');
+  ];
+
+  // FIXME: Some dependencies used by CRA aren't listed in its package.json
+  // Next line is a hack to remove as soon as CRA will have added these missing deps
+  // for details see https://github.com/facebook/create-react-app/pull/11751
+  if ([cra.name, cra_typescript.name].includes(name)) {
+    command.push(
+      `yarn config set packageExtensions --json '{ "babel-preset-react-app@10.0.x": { "dependencies": { "@babel/plugin-proposal-private-property-in-object": "^7.16.0" } } }'`
+    );
+  }
 
   await exec(
-    command,
+    command.join(' && '),
     { cwd },
     { startMessage: `🧶 Installing Yarn 2`, errorMessage: `🚨 Installing Yarn 2 failed` }
   );
@@ -112,6 +138,16 @@ const generate = async ({ cwd, name, appName, version, generator }: Options) => 
       startMessage: `🏗 Bootstrapping ${name} project (this might take a few minutes)`,
       errorMessage: `🚨 Bootstrapping ${name} failed`,
     }
+  );
+};
+
+const addAdditionalFiles = async ({ additionalFiles, cwd }: Options) => {
+  logger.info(`⤵️ Adding required files`);
+
+  await Promise.all(
+    additionalFiles.map(async (file) => {
+      await outputFile(path.resolve(cwd, file.path), file.contents, { encoding: 'UTF-8' });
+    })
   );
 };
 
@@ -205,15 +241,14 @@ export const createAndInit = async (
   logger.log();
   logger.info(`🏃 Starting for ${name} ${version}`);
   logger.log();
-  logger.debug(options);
-  logger.log();
 
   await doTask(generate, { ...options, cwd: options.creationPath });
-
+  await doTask(addAdditionalFiles, { ...options, cwd }, !!options.additionalFiles);
+  if (e2e) {
+    await doTask(addPackageResolutions, options);
+  }
   await doTask(installYarn2, options);
-
   await doTask(configureYarn2ForE2E, options, e2e);
-
   await doTask(addTypescript, options, !!options.typescript);
   await doTask(addRequiredDeps, options);
   await doTask(initStorybook, options);

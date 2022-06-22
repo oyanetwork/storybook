@@ -2,7 +2,7 @@
 
 StoryShots adds automatic Jest Snapshot Testing for [Storybook](https://storybook.js.org/).
 
-[Framework Support](https://github.com/storybookjs/storybook/blob/main/ADDONS_SUPPORT.md)
+[Framework Support](https://storybook.js.org/docs/react/api/frameworks-feature-support)
 
 ![StoryShots In Action](https://raw.githubusercontent.com/storybookjs/storybook/HEAD/addons/storyshots/storyshots-core/docs/storyshots-fail.png)
 
@@ -66,7 +66,7 @@ If you still need to configure jest you can use the resources mentioned below:
 
 **NOTE**: if you are using Storybook 5.3's `main.js` to list story files, this is no longer needed.
 
-Sometimes it's useful to configure Storybook with Webpack's require.context feature. You could be loading stories [one of two ways](https://storybook.js.org/docs/react/writing-stories/loading-stories).
+Sometimes it's useful to configure Storybook with Webpack's require.context feature. You could be loading stories [one of two ways](https://github.com/storybookjs/storybook/blob/release/5.3/docs/src/pages/basics/writing-stories/index.md#loading-stories).
 
 1. If you're using the `storiesOf` API, you can integrate it this way:
 
@@ -470,7 +470,7 @@ Whenever you change your data requirements by adding (and rendering) or (acciden
 
 ## Using a custom directory
 
-Depending on your project's needs, you can configure the `@storybook/addon-storyshots` to use a custom directory for the snapshots. You can read more about it in the [official docs](https://storybook.js.org/docs/react/workflows/snapshot-testing).
+Depending on your project's needs, you can configure the `@storybook/addon-storyshots` to use a custom directory for the snapshots. You can read more about it in the [official docs](https://storybook.js.org/docs/react/writing-tests/snapshot-testing).
 
 ## Options
 
@@ -654,7 +654,7 @@ This option needs to be set if either:
 
 ### `serializer` (deprecated)
 
-Pass a custom serializer (such as enzyme-to-json) to serialize components to snapshot-comparable data. The functionality of this option is completely covered by [snapshotSerializers](`snapshotSerializers`) which should be used instead.
+Pass a custom serializer (such as enzyme-to-json) to serialize components to snapshot-comparable data. The functionality of this option is completely covered by [snapshotSerializers](#snapshotserializers) which should be used instead.
 
 ```js
 import initStoryshots from '@storybook/addon-storyshots';

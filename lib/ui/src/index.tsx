@@ -1,15 +1,26 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference
+/// <reference path="./typings.d.ts" />
+
 import global from 'global';
 import React, { FC, FunctionComponent } from 'react';
 import ReactDOM from 'react-dom';
 
 import { Location, LocationProvider, useNavigate } from '@storybook/router';
 import { Provider as ManagerProvider, Combo } from '@storybook/api';
-import { ThemeProvider, ensure as ensureTheme } from '@storybook/theming';
+import {
+  ThemeProvider,
+  ensure as ensureTheme,
+  CacheProvider,
+  createCache,
+} from '@storybook/theming';
 import { HelmetProvider } from 'react-helmet-async';
 
 import App from './app';
 
 import Provider from './provider';
+
+const emotionCache = createCache({ key: 'sto' });
+emotionCache.compat = true;
 
 const { DOCS_MODE } = global;
 
@@ -63,15 +74,17 @@ const Main: FC<{ provider: Provider }> = ({ provider }) => {
               : !state.storiesFailed && !state.storiesConfigured;
 
             return (
-              <ThemeProvider key="theme.provider" theme={ensureTheme(state.theme)}>
-                <App
-                  key="app"
-                  viewMode={state.viewMode}
-                  layout={isLoading ? { ...state.layout, showPanel: false } : state.layout}
-                  panelCount={panelCount}
-                  docsOnly={story && story.parameters && story.parameters.docsOnly}
-                />
-              </ThemeProvider>
+              <CacheProvider value={emotionCache}>
+                <ThemeProvider key="theme.provider" theme={ensureTheme(state.theme)}>
+                  <App
+                    key="app"
+                    viewMode={state.viewMode}
+                    layout={isLoading ? { ...state.layout, showPanel: false } : state.layout}
+                    panelCount={panelCount}
+                    docsOnly={story && story.parameters && story.parameters.docsOnly}
+                  />
+                </ThemeProvider>
+              </CacheProvider>
             );
           }}
         </ManagerProvider>
@@ -80,7 +93,7 @@ const Main: FC<{ provider: Provider }> = ({ provider }) => {
   );
 };
 
-function renderStorybookUI(domNode: HTMLElement, provider: Provider) {
+export default function renderStorybookUI(domNode: HTMLElement, provider: Provider) {
   if (!(provider instanceof Provider)) {
     throw new Error('provider is not extended from the base Provider');
   }
@@ -89,4 +102,3 @@ function renderStorybookUI(domNode: HTMLElement, provider: Provider) {
 }
 
 export { Provider };
-export { renderStorybookUI as default };

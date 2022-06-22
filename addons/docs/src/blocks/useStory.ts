@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { StoryId, AnyFramework } from '@storybook/csf';
-import { Story } from '@storybook/store';
+import type { StoryId, AnyFramework } from '@storybook/csf';
+import type { Story } from '@storybook/store';
 
 import { DocsContextProps } from './DocsContext';
 
@@ -16,7 +16,12 @@ export function useStories<TFramework extends AnyFramework = AnyFramework>(
   storyIds: StoryId[],
   context: DocsContextProps<TFramework>
 ): (Story<TFramework> | void)[] {
-  const [storiesById, setStories] = useState({} as Record<StoryId, Story<TFramework>>);
+  const initialStoriesById = context.componentStories().reduce((acc, story) => {
+    acc[story.id] = story;
+    return acc;
+  }, {} as Record<StoryId, Story<TFramework>>);
+
+  const [storiesById, setStories] = useState(initialStoriesById as typeof initialStoriesById);
 
   useEffect(() => {
     Promise.all(

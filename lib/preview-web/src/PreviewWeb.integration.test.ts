@@ -76,8 +76,9 @@ describe('PreviewWeb', () => {
       const preview = new PreviewWeb();
 
       const docsRoot = window.document.createElement('div');
-      // @ts-ignore
-      preview.view.prepareForDocs.mockReturnValue(docsRoot);
+      (
+        preview.view.prepareForDocs as any as jest.Mock<typeof preview.view.prepareForDocs>
+      ).mockReturnValue(docsRoot);
       componentOneExports.default.parameters.docs.container.mockImplementationOnce(() =>
         React.createElement('div', {}, 'INSIDE')
       );

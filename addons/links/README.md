@@ -2,7 +2,7 @@
 
 The Storybook Links addon can be used to create links that navigate between stories in [Storybook](https://storybook.js.org).
 
-[Framework Support](https://github.com/storybookjs/storybook/blob/main/ADDONS_SUPPORT.md)
+[Framework Support](https://storybook.js.org/docs/react/api/frameworks-feature-support)
 
 ## Getting Started
 
@@ -55,7 +55,8 @@ With that, you can link an event in a component to any story in the Storybook.
 You can also pass a function instead for any of above parameter. That function accepts arguments emitted by the event and it should return a string:
 
 ```js
-import { LinkTo, linkTo } from '@storybook/addon-links';
+import { linkTo } from '@storybook/addon-links';
+import LinkTo from '@storybook/addon-links/react';
 
 export default {
   title: 'Select',

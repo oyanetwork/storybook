@@ -1,5 +1,11 @@
 import { once } from '@storybook/client-logger';
-import { combineArgs, mapArgsToTypes, validateOptions } from './args';
+import {
+  combineArgs,
+  groupArgsByTarget,
+  mapArgsToTypes,
+  NO_TARGET_NAME,
+  validateOptions,
+} from './args';
 
 const stringType = { name: 'string' };
 const numberType = { name: 'number' };
@@ -75,6 +81,25 @@ describe('mapArgsToTypes', () => {
 
   it('omits functions', () => {
     expect(mapArgsToTypes({ a: 'something' }, { a: { type: functionType } })).toStrictEqual({});
+  });
+
+  it('includes functions if there is a mapping', () => {
+    expect(
+      mapArgsToTypes(
+        { a: 'something' },
+        { a: { type: functionType, mapping: { something: () => 'foo' } } }
+      )
+    ).toStrictEqual({
+      a: 'something',
+    });
+  });
+
+  it('skips default mapping if there is a user-specified mapping', () => {
+    expect(
+      mapArgsToTypes({ a: 'something' }, { a: { type: numberType, mapping: { something: 10 } } })
+    ).toStrictEqual({
+      a: 'something',
+    });
   });
 
   it('omits unknown keys', () => {
@@ -201,6 +226,11 @@ describe('validateOptions', () => {
     expect(validateOptions({ a: 1 }, { a: { options: [1, 2] } })).toStrictEqual({ a: 1 });
   });
 
+  // https://github.com/storybookjs/storybook/issues/17063
+  it('does not set args to `undefined` if they are unset and there are options', () => {
+    expect(validateOptions({}, { a: { options: [2, 3] } })).toStrictEqual({});
+  });
+
   it('includes arg if value is undefined', () => {
     expect(validateOptions({ a: undefined }, { a: { options: [1, 2] } })).toStrictEqual({
       a: undefined,
@@ -236,5 +266,39 @@ describe('validateOptions', () => {
     expect(once.warn).toHaveBeenCalledWith(
       "Received illegal value for 'a[0]'. Supported options: 2, 3"
     );
+  });
+});
+
+describe('groupArgsByTarget', () => {
+  it('groups targeted args', () => {
+    const groups = groupArgsByTarget({
+      args: { a: 1, b: 2, c: 3 },
+      argTypes: { a: { target: 'group1' }, b: { target: 'group2' }, c: { target: 'group2' } },
+    } as any);
+    expect(groups).toEqual({
+      group1: {
+        a: 1,
+      },
+      group2: {
+        b: 2,
+        c: 3,
+      },
+    });
+  });
+
+  it('groups non-targetted args into a group with no name', () => {
+    const groups = groupArgsByTarget({
+      args: { a: 1, b: 2, c: 3 },
+      argTypes: { b: { name: 'b', target: 'group2' }, c: {} },
+    } as any);
+    expect(groups).toEqual({
+      [NO_TARGET_NAME]: {
+        a: 1,
+        c: 3,
+      },
+      group2: {
+        b: 2,
+      },
+    });
   });
 });

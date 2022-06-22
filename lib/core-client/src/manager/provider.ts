@@ -1,6 +1,7 @@
 import global from 'global';
 import { Provider } from '@storybook/ui';
-import { addons, AddonStore, Channel, Config, Types } from '@storybook/addons';
+import { addons, AddonStore, Channel } from '@storybook/addons';
+import type { Config, Types } from '@storybook/addons';
 import createPostMessageChannel from '@storybook/channel-postmessage';
 import createWebSocketChannel from '@storybook/channel-websocket';
 import Events from '@storybook/core-events';
@@ -25,7 +26,7 @@ export default class ReactProvider extends Provider {
     this.addons = addons;
     this.channel = channel;
 
-    if (FEATURES?.storyStoreV7) {
+    if (FEATURES?.storyStoreV7 && SERVER_CHANNEL_URL) {
       const serverChannel = createWebSocketChannel({ url: SERVER_CHANNEL_URL });
       this.serverChannel = serverChannel;
       addons.setServerChannel(this.serverChannel);

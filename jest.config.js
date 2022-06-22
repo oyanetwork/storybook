@@ -1,3 +1,5 @@
+const os = require('os');
+
 module.exports = {
   cacheDirectory: '.cache/jest',
   clearMocks: true,
@@ -41,6 +43,7 @@ module.exports = {
     '<rootDir>/app',
     '<rootDir>/lib',
     '<rootDir>/examples/official-storybook',
+    '<rootDir>/examples/react-ts',
   ],
   transform: {
     '^.+\\.stories\\.[jt]sx?$': '@storybook/addon-storyshots/injectFileName',
@@ -74,14 +77,22 @@ module.exports = {
     '/generators/',
     '/dll/',
     '/__mocks__ /',
+    '/__mockdata__/',
+    '/__mocks-ng-workspace__/',
     '/__testfixtures__/',
     '^.*\\.stories\\.[jt]sx?$',
+    'typings.d.ts$',
   ],
   globals: {
     DOCS_MODE: false,
     PREVIEW_URL: undefined,
+    SNAPSHOT_OS: os.platform() === 'win32' ? 'windows' : 'posix',
   },
-  snapshotSerializers: ['jest-emotion', 'enzyme-to-json/serializer', 'jest-serializer-html'],
+  snapshotSerializers: [
+    '@emotion/jest/serializer',
+    'enzyme-to-json/serializer',
+    'jest-serializer-html',
+  ],
   coverageDirectory: 'coverage',
   setupFilesAfterEnv: ['./scripts/jest.init.ts'],
   coverageReporters: ['lcov'],
@@ -91,4 +102,5 @@ module.exports = {
   modulePathIgnorePatterns: ['/dist/.*/__mocks__/'],
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json', 'node'],
   watchPlugins: ['jest-watch-typeahead/filename', 'jest-watch-typeahead/testname'],
+  reporters: ['default', 'jest-junit'],
 };

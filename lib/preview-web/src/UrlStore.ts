@@ -1,9 +1,9 @@
-import { SelectionSpecifier, Selection } from '@storybook/store';
+import type { SelectionSpecifier, Selection } from '@storybook/store';
 
 import global from 'global';
 import qs from 'qs';
 import deprecate from 'util-deprecate';
-import { ViewMode } from '@storybook/addons';
+import type { ViewMode } from '@storybook/addons';
 
 import { parseArgsParam } from './parseArgsParam';
 
@@ -42,6 +42,7 @@ export const setPath = (selection?: Selection) => {
   if (!selection) return;
   const query = getQueryString({ selection });
   const { hash = '' } = document.location;
+  document.title = selection.storyId;
   history.replaceState({}, '', `${document.location.pathname}${query}${hash}`);
 };
 

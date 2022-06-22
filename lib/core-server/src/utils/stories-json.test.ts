@@ -6,16 +6,32 @@ import Events from '@storybook/core-events';
 
 import { useStoriesJson, DEBOUNCE } from './stories-json';
 import { ServerChannel } from './get-server-channel';
+import { StoryIndexGenerator } from './StoryIndexGenerator';
 
 jest.mock('watchpack');
 jest.mock('lodash/debounce');
 
-const options: Parameters<typeof useStoriesJson>[2] = {
-  configDir: path.join(__dirname, '__mockdata__'),
-  presets: {
-    apply: async () => ['./src/**/*.stories.(ts|js|jsx)'] as any,
+const workingDir = path.join(__dirname, '__mockdata__');
+const normalizedStories = [
+  {
+    titlePrefix: '',
+    directory: './src',
+    files: '**/*.stories.@(ts|js|jsx)',
+    importPathMatcher:
+      /^\.[\\/](?:src(?:\/(?!\.)(?:(?:(?!(?:^|\/)\.).)*?)\/|\/|$)(?!\.)(?=.)[^/]*?\.stories\.(ts|js|jsx))$/,
   },
-} as any;
+];
+
+const getInitializedStoryIndexGenerator = async () => {
+  const generator = new StoryIndexGenerator(normalizedStories, {
+    configDir: workingDir,
+    workingDir,
+    storiesV2Compatibility: true,
+    storyStoreV7: true,
+  });
+  await generator.initialize();
+  return generator;
+};
 
 describe('useStoriesJson', () => {
   const use = jest.fn();
@@ -34,7 +50,7 @@ describe('useStoriesJson', () => {
     on: jest.fn(),
   } as any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     use.mockClear();
     send.mockClear();
     write.mockClear();
@@ -47,8 +63,14 @@ describe('useStoriesJson', () => {
 
   describe('JSON endpoint', () => {
     it('scans and extracts stories', async () => {
-      const mockServerChannel = ({ emit: jest.fn() } as any) as ServerChannel;
-      await useStoriesJson(router, mockServerChannel, options, options.configDir);
+      const mockServerChannel = { emit: jest.fn() } as any as ServerChannel;
+      useStoriesJson({
+        router,
+        serverChannel: mockServerChannel,
+        workingDir,
+        normalizedStories,
+        initializedStoryIndexGenerator: getInitializedStoryIndexGenerator(),
+      });
 
       expect(use).toHaveBeenCalledTimes(1);
       const route = use.mock.calls[0][1];
@@ -98,10 +120,23 @@ describe('useStoriesJson', () => {
               "story": "Story One",
               "title": "D",
             },
+            "first-nested-deeply-f--story-one": Object {
+              "id": "first-nested-deeply-f--story-one",
+              "importPath": "./src/first-nested/deeply/F.stories.js",
+              "kind": "first-nested/deeply/F",
+              "name": "Story One",
+              "parameters": Object {
+                "__id": "first-nested-deeply-f--story-one",
+                "docsOnly": false,
+                "fileName": "./src/first-nested/deeply/F.stories.js",
+              },
+              "story": "Story One",
+              "title": "first-nested/deeply/F",
+            },
             "nested-button--story-one": Object {
               "id": "nested-button--story-one",
               "importPath": "./src/nested/Button.stories.ts",
-              "kind": "Nested/Button",
+              "kind": "nested/Button",
               "name": "Story One",
               "parameters": Object {
                 "__id": "nested-button--story-one",
@@ -109,25 +144,51 @@ describe('useStoriesJson', () => {
                 "fileName": "./src/nested/Button.stories.ts",
               },
               "story": "Story One",
-              "title": "Nested/Button",
+              "title": "nested/Button",
             },
-            "second-nested-f--story-one": Object {
-              "id": "second-nested-f--story-one",
-              "importPath": "./src/second-nested/F.stories.ts",
-              "kind": "Second Nested/F",
+            "second-nested-g--story-one": Object {
+              "id": "second-nested-g--story-one",
+              "importPath": "./src/second-nested/G.stories.ts",
+              "kind": "second-nested/G",
               "name": "Story One",
               "parameters": Object {
-                "__id": "second-nested-f--story-one",
+                "__id": "second-nested-g--story-one",
                 "docsOnly": false,
-                "fileName": "./src/second-nested/F.stories.ts",
+                "fileName": "./src/second-nested/G.stories.ts",
               },
               "story": "Story One",
-              "title": "Second Nested/F",
+              "title": "second-nested/G",
             },
           },
           "v": 3,
         }
       `);
+    });
+
+    it('can handle simultaneous access', async () => {
+      const mockServerChannel = { emit: jest.fn() } as any as ServerChannel;
+
+      useStoriesJson({
+        router,
+        serverChannel: mockServerChannel,
+        workingDir,
+        normalizedStories,
+        initializedStoryIndexGenerator: getInitializedStoryIndexGenerator(),
+      });
+
+      expect(use).toHaveBeenCalledTimes(1);
+      const route = use.mock.calls[0][1];
+
+      const firstPromise = route(request, response);
+      const secondResponse = { ...response, send: jest.fn(), status: jest.fn() };
+      const secondPromise = route(request, secondResponse);
+
+      await Promise.all([firstPromise, secondPromise]);
+
+      expect(send).toHaveBeenCalledTimes(1);
+      expect(response.status).not.toEqual(500);
+      expect(secondResponse.send).toHaveBeenCalledTimes(1);
+      expect(secondResponse.status).not.toEqual(500);
     });
   });
 
@@ -138,8 +199,14 @@ describe('useStoriesJson', () => {
     });
 
     it('sends invalidate events', async () => {
-      const mockServerChannel = ({ emit: jest.fn() } as any) as ServerChannel;
-      await useStoriesJson(router, mockServerChannel, options, options.configDir);
+      const mockServerChannel = { emit: jest.fn() } as any as ServerChannel;
+      useStoriesJson({
+        router,
+        serverChannel: mockServerChannel,
+        workingDir,
+        normalizedStories,
+        initializedStoryIndexGenerator: getInitializedStoryIndexGenerator(),
+      });
 
       expect(use).toHaveBeenCalledTimes(1);
       const route = use.mock.calls[0][1];
@@ -161,8 +228,14 @@ describe('useStoriesJson', () => {
     });
 
     it('only sends one invalidation when multiple event listeners are listening', async () => {
-      const mockServerChannel = ({ emit: jest.fn() } as any) as ServerChannel;
-      await useStoriesJson(router, mockServerChannel, options, options.configDir);
+      const mockServerChannel = { emit: jest.fn() } as any as ServerChannel;
+      useStoriesJson({
+        router,
+        serverChannel: mockServerChannel,
+        workingDir,
+        normalizedStories,
+        initializedStoryIndexGenerator: getInitializedStoryIndexGenerator(),
+      });
 
       expect(use).toHaveBeenCalledTimes(1);
       const route = use.mock.calls[0][1];
@@ -190,8 +263,14 @@ describe('useStoriesJson', () => {
     it('debounces invalidation events', async () => {
       (debounce as jest.Mock).mockImplementation(jest.requireActual('lodash/debounce'));
 
-      const mockServerChannel = ({ emit: jest.fn() } as any) as ServerChannel;
-      await useStoriesJson(router, mockServerChannel, options, options.configDir);
+      const mockServerChannel = { emit: jest.fn() } as any as ServerChannel;
+      useStoriesJson({
+        router,
+        serverChannel: mockServerChannel,
+        workingDir,
+        normalizedStories,
+        initializedStoryIndexGenerator: getInitializedStoryIndexGenerator(),
+      });
 
       expect(use).toHaveBeenCalledTimes(1);
       const route = use.mock.calls[0][1];

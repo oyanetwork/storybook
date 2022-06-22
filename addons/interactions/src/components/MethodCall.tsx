@@ -1,3 +1,4 @@
+import { ObjectInspector } from '@devtools-ds/object-inspector';
 import { Call, CallRef, ElementRef } from '@storybook/instrumenter';
 import { useTheme } from '@storybook/theming';
 import React, { Fragment, ReactElement } from 'react';
@@ -91,11 +92,17 @@ const interleave = (nodes: ReactElement[], separator: ReactElement) =>
 export const Node = ({
   value,
   nested,
+  showObjectInspector,
   callsById,
   ...props
 }: {
   value: any;
   nested?: boolean;
+  /**
+   * Shows an object inspector instead of just printing the object.
+   * Only available for Objects
+   */
+  showObjectInspector?: boolean;
   callsById?: Map<Call['id'], Call>;
   [props: string]: any;
 }) => {
@@ -104,34 +111,36 @@ export const Node = ({
       return <NullNode {...props} />;
     case value === undefined:
       return <UndefinedNode {...props} />;
+    case Array.isArray(value):
+      return <ArrayNode {...props} value={value} callsById={callsById} />;
     case typeof value === 'string':
-      return <StringNode value={value} {...props} />;
+      return <StringNode {...props} value={value} />;
     case typeof value === 'number':
-      return <NumberNode value={value} {...props} />;
+      return <NumberNode {...props} value={value} />;
     case typeof value === 'boolean':
-      return <BooleanNode value={value} {...props} />;
-    case typeof value === 'function':
-      return <FunctionNode value={value} {...props} />;
-    case value instanceof Array:
-      return <ArrayNode value={value} {...props} />;
-    case value instanceof Date:
-      return <DateNode value={value} {...props} />;
-    case value instanceof Error:
-      return <ErrorNode value={value} {...props} />;
-    case value instanceof RegExp:
-      return <RegExpNode value={value} {...props} />;
+      return <BooleanNode {...props} value={value} />;
+
+    /* eslint-disable no-underscore-dangle */
+    case Object.prototype.hasOwnProperty.call(value, '__date__'):
+      return <DateNode {...props} {...value.__date__} />;
+    case Object.prototype.hasOwnProperty.call(value, '__error__'):
+      return <ErrorNode {...props} {...value.__error__} />;
+    case Object.prototype.hasOwnProperty.call(value, '__regexp__'):
+      return <RegExpNode {...props} {...value.__regexp__} />;
+    case Object.prototype.hasOwnProperty.call(value, '__function__'):
+      return <FunctionNode {...props} {...value.__function__} />;
+    case Object.prototype.hasOwnProperty.call(value, '__symbol__'):
+      return <SymbolNode {...props} {...value.__symbol__} />;
     case Object.prototype.hasOwnProperty.call(value, '__element__'):
-      // eslint-disable-next-line no-underscore-dangle
-      return <ElementNode value={value.__element__} {...props} />;
+      return <ElementNode {...props} {...value.__element__} />;
+    case Object.prototype.hasOwnProperty.call(value, '__class__'):
+      return <ClassNode {...props} {...value.__class__} />;
     case Object.prototype.hasOwnProperty.call(value, '__callId__'):
-      // eslint-disable-next-line no-underscore-dangle
       return <MethodCall call={callsById.get(value.__callId__)} callsById={callsById} />;
-    case typeof value === 'object' &&
-      value.constructor?.name &&
-      value.constructor?.name !== 'Object':
-      return <ClassNode value={value} {...props} />;
+    /* eslint-enable no-underscore-dangle */
+
     case Object.prototype.toString.call(value) === '[object Object]':
-      return <ObjectNode value={value} {...props} />;
+      return <ObjectNode value={value} showInspector={showObjectInspector} {...props} />;
     default:
       return <OtherNode value={value} {...props} />;
   }
@@ -182,12 +191,22 @@ export const BooleanNode = ({ value, ...props }: { value: boolean }) => {
   );
 };
 
-export const ArrayNode = ({ value, nested = false }: { value: any[]; nested?: boolean }) => {
+export const ArrayNode = ({
+  value,
+  nested = false,
+  callsById,
+}: {
+  value: any[];
+  nested?: boolean;
+  callsById?: Map<Call['id'], Call>;
+}) => {
   const colors = useThemeColors();
   if (nested) {
     return <span style={{ color: colors.base }}>[…]</span>;
   }
-  const nodes = value.slice(0, 3).map((v) => <Node key={v} value={v} nested />);
+  const nodes = value
+    .slice(0, 3)
+    .map((v) => <Node key={JSON.stringify(v)} value={v} nested callsById={callsById} />);
   const nodelist = interleave(nodes, <span>, </span>);
   if (value.length <= 3) {
     return <span style={{ color: colors.base }}>[{nodelist}]</span>;
@@ -199,14 +218,37 @@ export const ArrayNode = ({ value, nested = false }: { value: any[]; nested?: bo
   );
 };
 
-export const ObjectNode = ({ value, nested = false }: { value: object; nested?: boolean }) => {
+export const ObjectNode = ({
+  showInspector,
+  value,
+  nested = false,
+}: {
+  showInspector?: boolean;
+  value: object;
+  nested?: boolean;
+}) => {
+  const isDarkMode = useTheme().base === 'dark';
   const colors = useThemeColors();
+
+  if (showInspector) {
+    return (
+      <>
+        <ObjectInspector
+          id="interactions-object-inspector"
+          data={value}
+          includePrototypes={false}
+          colorScheme={isDarkMode ? 'dark' : 'light'}
+        />
+      </>
+    );
+  }
+
   if (nested) {
     return <span style={{ color: colors.base }}>{'{…}'}</span>;
   }
   const nodelist = interleave(
     Object.entries(value)
-      .slice(0, 1)
+      .slice(0, 2)
       .map(([k, v]) => (
         <Fragment key={k}>
           <span style={{ color: colors.objectkey }}>{k}: </span>
@@ -233,18 +275,27 @@ export const ObjectNode = ({ value, nested = false }: { value: object; nested?: 
   );
 };
 
-export const ClassNode = ({ value }: { value: Record<string, any> }) => {
+export const ClassNode = ({ name }: { name: string }) => {
   const colors = useThemeColors();
-  return <span style={{ color: colors.instance }}>{value.constructor.name}</span>;
+  return <span style={{ color: colors.instance }}>{name}</span>;
 };
 
-export const FunctionNode = ({ value }: { value: Function }) => {
+export const FunctionNode = ({ name }: { name: string }) => {
   const colors = useThemeColors();
-  return <span style={{ color: colors.function }}>{value.name || 'anonymous'}</span>;
+  return name ? (
+    <span style={{ color: colors.function }}>{name}</span>
+  ) : (
+    <span style={{ color: colors.nullish, fontStyle: 'italic' }}>anonymous</span>
+  );
 };
 
-export const ElementNode = ({ value }: { value: ElementRef['__element__'] }) => {
-  const { prefix, localName, id, classNames = [], innerText } = value;
+export const ElementNode = ({
+  prefix,
+  localName,
+  id,
+  classNames = [],
+  innerText,
+}: ElementRef['__element__']) => {
   const name = prefix ? `${prefix}:${localName}` : localName;
   const colors = useThemeColors();
   return (
@@ -279,8 +330,8 @@ export const ElementNode = ({ value }: { value: ElementRef['__element__'] }) => 
   );
 };
 
-export const DateNode = ({ value }: { value: Date }) => {
-  const [date, time, ms] = value.toISOString().split(/[T.Z]/);
+export const DateNode = ({ value }: { value: string }) => {
+  const [date, time, ms] = value.split(/[T.Z]/);
   const colors = useThemeColors();
   return (
     <span style={{ whiteSpace: 'nowrap', color: colors.date }}>
@@ -293,42 +344,36 @@ export const DateNode = ({ value }: { value: Date }) => {
   );
 };
 
-export const ErrorNode = ({ value }: { value: Error }) => {
+export const ErrorNode = ({ name, message }: { name: string; message: string }) => {
   const colors = useThemeColors();
   return (
     <span style={{ color: colors.error.name }}>
-      {value.name}
-      {value.message && ': '}
-      {value.message && (
-        <span
-          style={{ color: colors.error.message }}
-          title={value.message.length > 50 ? value.message : ''}
-        >
-          {ellipsize(value.message, 50)}
+      {name}
+      {message && ': '}
+      {message && (
+        <span style={{ color: colors.error.message }} title={message.length > 50 ? message : ''}>
+          {ellipsize(message, 50)}
         </span>
       )}
     </span>
   );
 };
 
-export const RegExpNode = ({ value }: { value: RegExp }) => {
+export const RegExpNode = ({ flags, source }: { flags: string; source: string }) => {
   const colors = useThemeColors();
   return (
     <span style={{ whiteSpace: 'nowrap', color: colors.regex.flags }}>
-      /<span style={{ color: colors.regex.source }}>{value.source}</span>/{value.flags}
+      /<span style={{ color: colors.regex.source }}>{source}</span>/{flags}
     </span>
   );
 };
 
-export const SymbolNode = ({ value }: { value: symbol }) => {
+export const SymbolNode = ({ description }: { description: string }) => {
   const colors = useThemeColors();
   return (
     <span style={{ whiteSpace: 'nowrap', color: colors.instance }}>
       Symbol(
-      {value.description && (
-        <span style={{ color: colors.meta }}>{JSON.stringify(value.description)}</span>
-      )}
-      )
+      {description && <span style={{ color: colors.meta }}>"{description}"</span>})
     </span>
   );
 };

@@ -1,6 +1,6 @@
 {
   "name": "@storybook/core-common",
-  "version": "6.4.0-beta.27",
+  "version": "6.5.0-rc.1",
   "description": "Storybook framework-agnostic API",
   "keywords": [
     "storybook"
@@ -31,8 +31,8 @@
   },
   "files": [
     "dist/**/*",
-    "dll/**/*",
     "types/**/*",
+    "templates/**/*",
     "*.js",
     "*.d.ts"
   ],
@@ -48,6 +48,7 @@
     "@babel/plugin-proposal-object-rest-spread": "^7.12.1",
     "@babel/plugin-proposal-optional-chaining": "^7.12.7",
     "@babel/plugin-proposal-private-methods": "^7.12.1",
+    "@babel/plugin-proposal-private-property-in-object": "^7.12.1",
     "@babel/plugin-syntax-dynamic-import": "^7.8.3",
     "@babel/plugin-transform-arrow-functions": "^7.12.1",
     "@babel/plugin-transform-block-scoping": "^7.12.12",
@@ -61,9 +62,9 @@
     "@babel/preset-react": "^7.12.10",
     "@babel/preset-typescript": "^7.12.7",
     "@babel/register": "^7.12.1",
-    "@storybook/node-logger": "6.4.0-beta.27",
+    "@storybook/node-logger": "6.5.0-rc.1",
     "@storybook/semver": "^7.3.2",
-    "@types/node": "^14.0.10",
+    "@types/node": "^14.0.10 || ^16.0.0",
     "@types/pretty-hrtime": "^1.0.0",
     "babel-loader": "^8.0.0",
     "babel-plugin-macros": "^3.0.1",
@@ -85,13 +86,13 @@
     "pretty-hrtime": "^1.0.3",
     "resolve-from": "^5.0.0",
     "slash": "^3.0.0",
-    "telejson": "^5.3.2",
+    "telejson": "^6.0.8",
     "ts-dedent": "^2.0.0",
     "util-deprecate": "^1.0.2",
     "webpack": "4"
   },
   "devDependencies": {
-    "@storybook/react-docgen-typescript-plugin": "1.0.2-canary.253f8c1.0",
+    "@storybook/react-docgen-typescript-plugin": "1.0.2-canary.6.9d540b91e815f8fc2f8829189deb00553559ff63.0",
     "@types/compression": "^1.7.0",
     "@types/interpret": "^1.1.1",
     "@types/mock-fs": "^4.13.0",
@@ -99,8 +100,8 @@
     "mock-fs": "^4.13.0"
   },
   "peerDependencies": {
-    "react": "^16.8.0 || ^17.0.0",
-    "react-dom": "^16.8.0 || ^17.0.0"
+    "react": "^16.8.0 || ^17.0.0 || ^18.0.0",
+    "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0"
   },
   "peerDependenciesMeta": {
     "typescript": {
@@ -110,6 +111,6 @@
   "publishConfig": {
     "access": "public"
   },
-  "gitHead": "b73d9e79cf41328a21eb5f8c1490f450abaf4142",
+  "gitHead": "3f09d4e6b0c655a092dc812488ef2c7ed3808401",
   "sbmodern": "dist/modern/index.js"
 }
