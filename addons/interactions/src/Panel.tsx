@@ -151,7 +151,7 @@ export const AddonPanelPure: React.FC<InteractionsPanelProps> = React.memo(
             />
           ))}
         </div>
-        {caughtException?.message && !caughtException?.message.startsWith('ignoredException') && (
+        {caughtException && !caughtException.message?.startsWith('ignoredException') && (
           <CaughtException>
             <CaughtExceptionTitle>
               Caught exception in <CaughtExceptionCode>play</CaughtExceptionCode> function
@@ -160,7 +160,9 @@ export const AddonPanelPure: React.FC<InteractionsPanelProps> = React.memo(
               This story threw an error after it finished rendering which means your interactions
               couldn&apos;t be run. Go to this story&apos;s play function in {fileName} to fix.
             </CaughtExceptionDescription>
-            <CaughtExceptionStack>{caughtException.stack}</CaughtExceptionStack>
+            <CaughtExceptionStack>
+              {caughtException.stack || `${caughtException.name}: ${caughtException.message}`}
+            </CaughtExceptionStack>
           </CaughtException>
         )}
         <div ref={endRef} />
@@ -224,7 +226,7 @@ export const Panel: React.FC<AddonPanelProps> = (props) => {
         if (event.newPhase === 'rendering') setCaughtException(undefined);
       },
       [STORY_THREW_EXCEPTION]: (e) => {
-        if (e.message !== IGNORED_EXCEPTION.message) setCaughtException(e);
+        if (e?.message !== IGNORED_EXCEPTION.message) setCaughtException(e);
         else setCaughtException(undefined);
       },
     },

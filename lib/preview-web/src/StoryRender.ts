@@ -217,7 +217,7 @@ export class StoryRender<TFramework extends AnyFramework> implements Render<TFra
         } catch (error) {
           logger.error(error);
           await this.runPhase(abortSignal, 'errored', async () => {
-            const { name: errorName, message, stack } = error;
+            const { name: errorName = 'Error', message = String(error), stack } = error;
             this.channel.emit(STORY_THREW_EXCEPTION, { name: errorName, message, stack });
           });
         }
