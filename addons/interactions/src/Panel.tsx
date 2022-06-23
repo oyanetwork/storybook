@@ -3,11 +3,12 @@ import * as React from 'react';
 import ReactDOM from 'react-dom';
 import { useChannel, useParameter, StoryId } from '@storybook/api';
 import {
+  IGNORED_EXCEPTION,
   STORY_RENDER_PHASE_CHANGED,
   STORY_THREW_EXCEPTION,
   FORCE_REMOUNT,
 } from '@storybook/core-events';
-import { AddonPanel, Code, Link, Placeholder } from '@storybook/components';
+import { AddonPanel, Link, Placeholder } from '@storybook/components';
 import { EVENTS, Call, CallStates, ControlStates, LogItem } from '@storybook/instrumenter';
 import { styled } from '@storybook/theming';
 
@@ -68,9 +69,9 @@ const TabStatus = ({ children }: { children: React.ReactChild }) => {
   return container && ReactDOM.createPortal(children, container);
 };
 
-const Container = styled.div<{ hasException: boolean }>(({ theme, hasException }) => ({
+const Container = styled.div<{ withException: boolean }>(({ theme, withException }) => ({
   minHeight: '100%',
-  background: hasException ? theme.background.warning : theme.background.content,
+  background: withException ? theme.background.warning : theme.background.content,
 }));
 
 const CaughtException = styled.div(({ theme }) => ({
@@ -120,7 +121,7 @@ export const AddonPanelPure: React.FC<InteractionsPanelProps> = React.memo(
     ...panelProps
   }) => (
     <AddonPanel {...panelProps}>
-      <Container hasException={hasException}>
+      <Container withException={!!caughtException}>
         {controlStates.debugger && (interactions.length > 0 || hasException) && (
           <Subnav
             controls={controls}
@@ -222,7 +223,10 @@ export const Panel: React.FC<AddonPanelProps> = (props) => {
         setPausedAt(undefined);
         if (event.newPhase === 'rendering') setCaughtException(undefined);
       },
-      [STORY_THREW_EXCEPTION]: setCaughtException,
+      [STORY_THREW_EXCEPTION]: (e) => {
+        if (e.message !== IGNORED_EXCEPTION.message) setCaughtException(e);
+        else setCaughtException(undefined);
+      },
     },
     []
   );
