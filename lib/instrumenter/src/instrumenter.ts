@@ -445,7 +445,9 @@ export class Instrumenter {
 
         // Exceptions inside callbacks should bubble up to the parent call.
         if (call.ancestors.length) {
-          Object.defineProperty(e, 'callId', { value: call.id });
+          if (!Object.prototype.hasOwnProperty.call(e, 'callId')) {
+            Object.defineProperty(e, 'callId', { value: call.id });
+          }
           throw e;
         }
 
