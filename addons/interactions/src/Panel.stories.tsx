@@ -1,8 +1,11 @@
+/* eslint-disable jest/no-standalone-expect */
 import React from 'react';
 import { action } from '@storybook/addon-actions';
 import { ComponentStoryObj, ComponentMeta } from '@storybook/react';
 import { CallStates } from '@storybook/instrumenter';
 import { styled } from '@storybook/theming';
+import { userEvent, within, waitFor } from '@storybook/testing-library';
+import { expect } from '@storybook/jest';
 
 import { getCalls, getInteractions } from './mocks';
 import { AddonPanelPure } from './Panel';
@@ -56,6 +59,34 @@ export const Passing: Story = {
   args: {
     interactions: getInteractions(CallStates.DONE),
   },
+};
+Passing.play = async ({ args, canvasElement }) => {
+  const canvas = within(canvasElement);
+
+  await waitFor(async () => {
+    await userEvent.click(canvas.getByLabelText('Go to start'));
+    await expect(args.controls.start).toHaveBeenCalled();
+  });
+
+  await waitFor(async () => {
+    await userEvent.click(canvas.getByLabelText('Go back'));
+    await expect(args.controls.back).toHaveBeenCalled();
+  });
+
+  await waitFor(async () => {
+    await userEvent.click(canvas.getByLabelText('Go forward'));
+    await expect(args.controls.next).not.toHaveBeenCalled();
+  });
+
+  await waitFor(async () => {
+    await userEvent.click(canvas.getByLabelText('Go to end'));
+    await expect(args.controls.end).not.toHaveBeenCalled();
+  });
+
+  await waitFor(async () => {
+    await userEvent.click(canvas.getByLabelText('Rerun'));
+    await expect(args.controls.rerun).toHaveBeenCalled();
+  });
 };
 
 export const Paused: Story = {
