@@ -15,6 +15,7 @@ import {
 } from '@storybook/store';
 import { Channel } from '@storybook/addons';
 import { STORY_RENDER_PHASE_CHANGED, STORY_RENDERED } from '@storybook/core-events';
+import { instrument } from '@storybook/instrumenter';
 
 const { AbortController } = global;
 
@@ -204,8 +205,12 @@ export class StoryRender<TFramework extends AnyFramework> implements Render<TFra
 
       if (forceRemount && playFunction) {
         this.disableKeyListeners = true;
+        const { step } = instrument(
+          { step: async (label: string, callback: () => any) => callback() },
+          { intercept: true }
+        );
         await this.runPhase(abortSignal, 'playing', async () =>
-          playFunction(renderContext.storyContext)
+          playFunction({ ...renderContext.storyContext, step })
         );
         await this.runPhase(abortSignal, 'played');
         this.disableKeyListeners = false;

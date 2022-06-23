@@ -1,6 +1,6 @@
 import { ObjectInspector } from '@devtools-ds/object-inspector';
 import { Call, CallRef, ElementRef } from '@storybook/instrumenter';
-import { useTheme } from '@storybook/theming';
+import { color, useTheme } from '@storybook/theming';
 import React, { Fragment, ReactElement } from 'react';
 
 const colorsLight = {
@@ -383,6 +383,22 @@ export const OtherNode = ({ value }: { value: any }) => {
   return <span style={{ color: colors.meta }}>{stringify(value)}</span>;
 };
 
+export const StepNode = ({ label }: { label: string }) => {
+  const colors = useThemeColors();
+  const { typography } = useTheme();
+  return (
+    <span
+      style={{
+        color: colors.base,
+        fontFamily: typography.fonts.base,
+        fontSize: typography.size.s2 - 1,
+      }}
+    >
+      {label}
+    </span>
+  );
+};
+
 export const MethodCall = ({
   call,
   callsById,
@@ -393,7 +409,9 @@ export const MethodCall = ({
   // Call might be undefined during initial render, can be safely ignored.
   if (!call) return null;
 
-  const colors = useThemeColors();
+  if (call.method === 'step' && call.path.length === 0) {
+    return <StepNode label={call.args[0]} />;
+  }
 
   const path = call.path.flatMap((elem, index) => {
     // eslint-disable-next-line no-underscore-dangle
@@ -416,6 +434,7 @@ export const MethodCall = ({
       : [node];
   });
 
+  const colors = useThemeColors();
   return (
     <>
       <span style={{ color: colors.base }}>{path}</span>

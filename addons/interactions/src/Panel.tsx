@@ -196,16 +196,19 @@ export const Panel: React.FC<AddonPanelProps> = (props) => {
     const callsById = new Map<Call['id'], Call>();
     const childCallMap = new Map<Call['id'], Call['id'][]>();
     return log
-      .filter(({ callId, parentId }) => {
-        if (!parentId) return true;
-        childCallMap.set(parentId, (childCallMap.get(parentId) || []).concat(callId));
-        return !collapsed.has(parentId);
+      .filter(({ callId, ancestors }) => {
+        let visible = true;
+        ancestors.forEach((ancestor) => {
+          if (collapsed.has(ancestor)) visible = false;
+          childCallMap.set(ancestor, (childCallMap.get(ancestor) || []).concat(callId));
+        });
+        return visible;
       })
       .map(({ callId, status }) => ({ ...calls.current.get(callId), status } as Call))
       .map((call) => {
         const status =
           call.status === CallStates.ERROR &&
-          callsById.get(call.parentId)?.status === CallStates.ACTIVE
+          callsById.get(call.ancestors.slice(-1)[0])?.status === CallStates.ACTIVE
             ? CallStates.ACTIVE
             : call.status;
         callsById.set(call.id, { ...call, status });

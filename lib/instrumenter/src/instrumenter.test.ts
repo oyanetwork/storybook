@@ -140,7 +140,7 @@ describe('Instrumenter', () => {
         method: 'fn',
         interceptable: false,
         status: 'done',
-        parentId: undefined,
+        ancestors: [],
       })
     );
   });
@@ -216,28 +216,28 @@ describe('Instrumenter', () => {
     });
     fn5();
     expect(callSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'kind--story [0] fn1', parentId: undefined })
+      expect.objectContaining({ id: 'kind--story [0] fn1', ancestors: [] })
     );
     expect(callSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'kind--story [0] fn1 [0] fn2',
-        parentId: 'kind--story [0] fn1',
+        ancestors: ['kind--story [0] fn1'],
       })
     );
     expect(callSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'kind--story [0] fn1 [0] fn2 [0] fn3',
-        parentId: 'kind--story [0] fn1 [0] fn2',
+        ancestors: ['kind--story [0] fn1 [0] fn2'],
       })
     );
     expect(callSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'kind--story [0] fn1 [1] fn4',
-        parentId: 'kind--story [0] fn1',
+        ancestors: ['kind--story [0] fn1'],
       })
     );
     expect(callSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'kind--story [1] fn5', parentId: undefined })
+      expect.objectContaining({ id: 'kind--story [1] fn5', ancestors: [] })
     );
   });
 
@@ -247,16 +247,16 @@ describe('Instrumenter', () => {
     await fn1(() => fn2());
     await fn3();
     expect(callSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'kind--story [0] fn1', parentId: undefined })
+      expect.objectContaining({ id: 'kind--story [0] fn1', ancestors: [] })
     );
     expect(callSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'kind--story [0] fn1 [0] fn2',
-        parentId: 'kind--story [0] fn1',
+        ancestors: ['kind--story [0] fn1'],
       })
     );
     expect(callSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'kind--story [1] fn3', parentId: undefined })
+      expect.objectContaining({ id: 'kind--story [1] fn3', ancestors: [] })
     );
   });
 
@@ -294,8 +294,8 @@ describe('Instrumenter', () => {
     expect(syncSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         logItems: [
-          { callId: 'kind--story [2] fn2', status: 'done' },
-          { callId: 'kind--story [3] fn', status: 'done' },
+          { callId: 'kind--story [2] fn2', status: 'done', ancestors: [] },
+          { callId: 'kind--story [3] fn', status: 'done', ancestors: [] },
         ],
       })
     );
@@ -388,8 +388,8 @@ describe('Instrumenter', () => {
       expect(syncSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           logItems: [
-            { callId: 'kind--story [0] fn1', status: 'done' },
-            { callId: 'kind--story [1] fn2', status: 'done' },
+            { callId: 'kind--story [0] fn1', status: 'done', ancestors: [] },
+            { callId: 'kind--story [1] fn2', status: 'done', ancestors: [] },
           ],
         })
       );
@@ -405,11 +405,11 @@ describe('Instrumenter', () => {
       expect(syncSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           logItems: [
-            { callId: 'kind--story [0] fn1', status: 'done' },
+            { callId: 'kind--story [0] fn1', status: 'done', ancestors: [] },
             {
               callId: 'kind--story [0] fn1 [0] fn2',
               status: 'done',
-              parentId: 'kind--story [0] fn1',
+              ancestors: ['kind--story [0] fn1'],
             },
           ],
         })

@@ -45,7 +45,7 @@ export const Done: Story = {
 
 export const WithParent: Story = {
   args: {
-    call: { ...getCalls(CallStates.DONE).slice(-1)[0], parentId: 'parent-id' },
+    call: { ...getCalls(CallStates.DONE).slice(-1)[0], ancestors: ['parent-id'] },
   },
 };
 

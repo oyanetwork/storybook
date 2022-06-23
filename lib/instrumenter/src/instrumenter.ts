@@ -69,7 +69,7 @@ const getInitialState = (): State => ({
   shadowCalls: [],
   callRefsByResult: new Map(),
   chainedCallIds: new Set<Call['id']>(),
-  parentId: undefined,
+  ancestors: [],
   playUntil: undefined,
   resolvers: {},
   syncTimeout: undefined,
@@ -177,7 +177,7 @@ export class Instrumenter {
             playUntil ||
             shadowCalls
               .slice(0, firstRowIndex)
-              .filter((call) => call.interceptable && !call.parentId)
+              .filter((call) => call.interceptable && !call.ancestors.length)
               .slice(-1)[0]?.id,
         };
       });
@@ -187,7 +187,7 @@ export class Instrumenter {
     };
 
     const back = ({ storyId }: { storyId: string }) => {
-      const log = this.getLog(storyId).filter((call) => !call.parentId);
+      const log = this.getLog(storyId).filter((call) => !call.ancestors.length);
       const last = log.reduceRight((res, item, index) => {
         if (res >= 0 || item.status === CallStates.WAITING) return res;
         return index;
@@ -275,7 +275,7 @@ export class Instrumenter {
         }
       });
       if ((call.interceptable || call.exception) && !seen.has(call.id)) {
-        acc.unshift({ callId: call.id, status: call.status, parentId: call.parentId });
+        acc.unshift({ callId: call.id, status: call.status, ancestors: call.ancestors });
         seen.add(call.id);
       }
       return acc;
@@ -332,13 +332,13 @@ export class Instrumenter {
   track(method: string, fn: Function, args: any[], options: Options) {
     const storyId: StoryId =
       args?.[0]?.__storyId__ || global.window.__STORYBOOK_PREVIEW__?.urlStore?.selection?.storyId;
-    const { cursor, parentId } = this.getState(storyId);
+    const { cursor, ancestors } = this.getState(storyId);
     this.setState(storyId, { cursor: cursor + 1 });
-    const id = `${parentId || storyId} [${cursor}] ${method}`;
+    const id = `${ancestors.slice(-1)[0] || storyId} [${cursor}] ${method}`;
     const { path = [], intercept = false, retain = false } = options;
     const interceptable = typeof intercept === 'function' ? intercept(method, path) : intercept;
-    const call: Call = { id, parentId, storyId, cursor, path, method, args, interceptable, retain };
-    const interceptOrInvoke = interceptable && !parentId ? this.intercept : this.invoke;
+    const call = { id, cursor, storyId, ancestors, path, method, args, interceptable, retain };
+    const interceptOrInvoke = interceptable && !ancestors.length ? this.intercept : this.invoke;
     const result = interceptOrInvoke.call(this, fn, call, options);
     return this.instrument(result, { ...options, mutate: true, path: [{ __callId__: call.id }] });
   }
@@ -444,7 +444,7 @@ export class Instrumenter {
         }));
 
         // Exceptions inside callbacks should bubble up to the parent call.
-        if (call.parentId) {
+        if (call.ancestors.length) {
           Object.defineProperty(e, 'callId', { value: call.id });
           throw e;
         }
@@ -476,15 +476,15 @@ export class Instrumenter {
         if (typeof arg !== 'function' || Object.keys(arg).length) return arg;
 
         return (...args: any) => {
-          // Set the cursor and parentId for calls that happen inside the callback.
-          const { cursor, parentId } = this.getState(call.storyId);
-          this.setState(call.storyId, { cursor: 0, parentId: call.id });
-          const restore = () => this.setState(call.storyId, { cursor, parentId });
+          // Set the cursor and ancestors for calls that happen inside the callback.
+          const { cursor, ancestors } = this.getState(call.storyId);
+          this.setState(call.storyId, { cursor: 0, ancestors: [...ancestors, call.id] });
+          const restore = () => this.setState(call.storyId, { cursor, ancestors });
 
           // Invoke the actual callback function.
           const res = arg(...args);
 
-          // Reset cursor and parentId to their original values before we entered the callback.
+          // Reset cursor and ancestors to their original values before we entered the callback.
           if (res instanceof Promise) res.then(restore, restore);
           else restore();
 
@@ -548,7 +548,7 @@ export class Instrumenter {
     const { isLocked, isPlaying } = this.getState(storyId);
     const logItems: LogItem[] = this.getLog(storyId);
     const pausedAt = logItems
-      .filter(({ parentId }) => !parentId)
+      .filter(({ ancestors }) => !ancestors.length)
       .find((item) => item.status === CallStates.WAITING)?.callId;
 
     const hasActive = logItems.some((item) => item.status === CallStates.ACTIVE);

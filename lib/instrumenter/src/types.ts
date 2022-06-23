@@ -2,9 +2,9 @@ import type { StoryId } from '@storybook/addons';
 
 export interface Call {
   id: string;
-  parentId?: Call['id'];
-  storyId: StoryId;
   cursor: number;
+  storyId: StoryId;
+  ancestors: Call['id'][];
   path: Array<string | CallRef>;
   method: string;
   args: any[];
@@ -52,7 +52,7 @@ export interface ControlStates {
 export interface LogItem {
   callId: Call['id'];
   status: Call['status'];
-  parentId?: Call['id'];
+  ancestors: Call['id'][];
 }
 
 export interface Payload {
@@ -70,7 +70,7 @@ export interface State {
   shadowCalls: Call[];
   callRefsByResult: Map<any, CallRef & { retain: boolean }>;
   chainedCallIds: Set<Call['id']>;
-  parentId?: Call['id'];
+  ancestors: Call['id'][];
   playUntil?: Call['id'];
   resolvers: Record<Call['id'], Function>;
   syncTimeout: ReturnType<typeof setTimeout>;
