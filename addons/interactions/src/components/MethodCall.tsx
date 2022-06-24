@@ -1,6 +1,6 @@
 import { ObjectInspector } from '@devtools-ds/object-inspector';
 import { Call, CallRef, ElementRef } from '@storybook/instrumenter';
-import { color, useTheme } from '@storybook/theming';
+import { useTheme } from '@storybook/theming';
 import React, { Fragment, ReactElement } from 'react';
 
 const colorsLight = {
