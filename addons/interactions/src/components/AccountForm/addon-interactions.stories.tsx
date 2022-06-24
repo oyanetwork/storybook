@@ -44,6 +44,7 @@ Demo.play = async ({ args, canvasElement }) => {
 
 export const Exception = Demo.bind({});
 Exception.play = () => Demo.play(undefined as any); // deepscan-disable-line
+Exception.parameters = { chromatic: { disableSnapshot: true } };
 
 export const FindBy: CSF2Story = (args) => {
   const [isLoading, setIsLoading] = React.useState(true);
