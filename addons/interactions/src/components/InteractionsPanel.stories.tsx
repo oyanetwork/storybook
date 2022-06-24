@@ -37,6 +37,7 @@ export default {
   ],
   parameters: {
     layout: 'fullscreen',
+    theme: 'light', // stacked will break interactions
   },
   args: {
     calls: new Map(getCalls(CallStates.DONE).map((call) => [call.id, call])),
