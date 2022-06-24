@@ -26,12 +26,10 @@ import {
   RenderToDOM,
 } from '@storybook/store';
 
-import { StoryRender } from './StoryRender';
+import { MaybePromise, StoryRender } from './StoryRender';
 import { DocsRender } from './DocsRender';
 
 const { fetch } = global;
-
-type MaybePromise<T> = Promise<T> | T;
 
 const STORY_INDEX_PATH = './stories.json';
 
@@ -114,7 +112,7 @@ export class Preview<TFramework extends AnyFramework> {
 
             Perhaps it needs to be upgraded for Storybook 6.4?
 
-            More info: https://github.com/storybookjs/storybook/blob/next/MIGRATION.md#mainjs-framework-field          
+            More info: https://github.com/storybookjs/storybook/blob/next/MIGRATION.md#mainjs-framework-field
           `);
         }
         return projectAnnotations;
@@ -331,7 +329,7 @@ export class Preview<TFramework extends AnyFramework> {
       // In v6 mode, if your preview.js throws, we never get a chance to initialize the preview
       // or store, and the error is simply logged to the browser console. This is the best we can do
       throw new Error(dedent`Failed to initialize Storybook.
-      
+
       Do you have an error in your \`preview.js\`? Check your Storybook's browser console for errors.`);
     }
 

@@ -35,7 +35,7 @@ import { Preview } from './Preview';
 
 import { UrlStore } from './UrlStore';
 import { WebView } from './WebView';
-import { PREPARE_ABORTED, Render, StoryRender } from './StoryRender';
+import { MaybePromise, PREPARE_ABORTED, Render, StoryRender } from './StoryRender';
 import { DocsRender } from './DocsRender';
 
 const { window: globalWindow } = global;
@@ -44,8 +44,6 @@ function focusInInput(event: Event) {
   const target = event.target as Element;
   return /input|textarea/i.test(target.tagName) || target.getAttribute('contenteditable') !== null;
 }
-
-type MaybePromise<T> = Promise<T> | T;
 
 export class PreviewWeb<TFramework extends AnyFramework> extends Preview<TFramework> {
   urlStore: UrlStore;
@@ -70,7 +68,7 @@ export class PreviewWeb<TFramework extends AnyFramework> extends Preview<TFramew
       () => this.urlStore.selection,
       dedent`
         \`__STORYBOOK_STORY_STORE__.getSelection()\` is deprecated and will be removed in 7.0.
-  
+
         To get the current selection, use the \`useStoryContext()\` hook from \`@storybook/addons\`.
       `
     );
@@ -392,7 +390,7 @@ export class PreviewWeb<TFramework extends AnyFramework> extends Preview<TFramew
       // In v6 mode, if your preview.js throws, we never get a chance to initialize the preview
       // or store, and the error is simply logged to the browser console. This is the best we can do
       throw new Error(dedent`Failed to initialize Storybook.
-      
+
       Do you have an error in your \`preview.js\`? Check your Storybook's browser console for errors.`);
     }
 

@@ -19,6 +19,8 @@ import { instrument } from '@storybook/instrumenter';
 
 const { AbortController } = global;
 
+export type MaybePromise<T> = Promise<T> | T;
+
 export type RenderPhase =
   | 'preparing'
   | 'loading'
@@ -48,7 +50,7 @@ export type RenderContextCallbacks<TFramework extends AnyFramework> = Pick<
 export const PREPARE_ABORTED = new Error('prepareAborted');
 
 const { step } = instrument(
-  { step: (label: string, callback: () => Promise<void> | void) => callback() },
+  { step: (label: string, callback: () => MaybePromise<void>) => callback() },
   { intercept: true }
 );
 
