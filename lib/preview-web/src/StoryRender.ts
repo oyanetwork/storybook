@@ -47,6 +47,11 @@ export type RenderContextCallbacks<TFramework extends AnyFramework> = Pick<
 
 export const PREPARE_ABORTED = new Error('prepareAborted');
 
+const { step } = instrument(
+  { step: async (label: string, callback: () => Promise<void> | void) => callback() },
+  { intercept: true }
+);
+
 export interface Render<TFramework extends AnyFramework> {
   id: StoryId;
   story?: Story<TFramework>;
@@ -191,6 +196,7 @@ export class StoryRender<TFramework extends AnyFramework> implements Render<TFra
         story: name,
         ...this.callbacks,
         forceRemount: forceRemount || this.notYetRendered,
+        playContext: { ...renderStoryContext, step },
         storyContext: renderStoryContext,
         storyFn: () => unboundStoryFn(renderStoryContext),
         unboundStoryFn,
@@ -205,12 +211,8 @@ export class StoryRender<TFramework extends AnyFramework> implements Render<TFra
 
       if (forceRemount && playFunction) {
         this.disableKeyListeners = true;
-        const { step } = instrument(
-          { step: async (label: string, callback: () => any) => callback() },
-          { intercept: true }
-        );
         await this.runPhase(abortSignal, 'playing', async () =>
-          playFunction({ ...renderContext.storyContext, step })
+          playFunction(renderContext.playContext)
         );
         await this.runPhase(abortSignal, 'played');
         this.disableKeyListeners = false;

@@ -91,6 +91,7 @@ export declare type RenderContext<TFramework extends AnyFramework = AnyFramework
     showError: (error: { title: string; description: string }) => void;
     showException: (err: Error) => void;
     forceRemount: boolean;
+    playContext: StoryContext<TFramework> & { step: () => Promise<void> | void };
     storyContext: StoryContext<TFramework>;
     storyFn: PartialStoryFn<TFramework>;
     unboundStoryFn: LegacyStoryFn<TFramework>;
