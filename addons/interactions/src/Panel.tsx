@@ -1,6 +1,5 @@
 import global from 'global';
 import * as React from 'react';
-import ReactDOM from 'react-dom';
 import { useChannel, useParameter, StoryId } from '@storybook/api';
 import {
   IGNORED_EXCEPTION,
@@ -9,10 +8,9 @@ import {
   FORCE_REMOUNT,
 } from '@storybook/core-events';
 import { EVENTS, Call, CallStates, ControlStates, LogItem } from '@storybook/instrumenter';
-import { styled } from '@storybook/theming';
 
-import { StatusIcon } from './components/StatusIcon';
 import { InteractionsPanel } from './components/InteractionsPanel';
+import { TabIcon, TabStatus } from './components/TabStatus';
 
 const INITIAL_CONTROL_STATES = {
   debugger: false,
@@ -23,13 +21,46 @@ const INITIAL_CONTROL_STATES = {
   end: false,
 };
 
-const TabIcon = styled(StatusIcon)({
-  marginLeft: 5,
-});
-
-const TabStatus = ({ children }: { children: React.ReactChild }) => {
-  const container = global.document.getElementById('tabbutton-interactions');
-  return container && ReactDOM.createPortal(children, container);
+const getInteractions = ({
+  log,
+  calls,
+  collapsed,
+  setCollapsed,
+}: {
+  log: LogItem[];
+  calls: Map<Call['id'], Call>;
+  collapsed: Set<Call['id']>;
+  setCollapsed: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) => {
+  const callsById = new Map<Call['id'], Call>();
+  const childCallMap = new Map<Call['id'], Call['id'][]>();
+  return log
+    .filter(({ callId, parentId }) => {
+      if (!parentId) return true;
+      childCallMap.set(parentId, (childCallMap.get(parentId) || []).concat(callId));
+      return !collapsed.has(parentId);
+    })
+    .map(({ callId, status }) => ({ ...calls.get(callId), status } as Call))
+    .map((call) => {
+      const status =
+        call.status === CallStates.ERROR &&
+        callsById.get(call.parentId)?.status === CallStates.ACTIVE
+          ? CallStates.ACTIVE
+          : call.status;
+      callsById.set(call.id, { ...call, status });
+      return {
+        ...call,
+        status,
+        childCallIds: childCallMap.get(call.id),
+        isCollapsed: collapsed.has(call.id),
+        toggleCollapsed: () =>
+          setCollapsed((ids) => {
+            if (ids.has(call.id)) ids.delete(call.id);
+            else ids.add(call.id);
+            return new Set(ids);
+          }),
+      };
+    });
 };
 
 export const Panel: React.FC<{ active: boolean }> = (props) => {
@@ -104,37 +135,10 @@ export const Panel: React.FC<{ active: boolean }> = (props) => {
   const showStatus = (log.length > 0 || !!caughtException) && !isPlaying;
   const hasException = !!caughtException || log.some((item) => item.status === CallStates.ERROR);
 
-  const interactions = React.useMemo(() => {
-    const callsById = new Map<Call['id'], Call>();
-    const childCallMap = new Map<Call['id'], Call['id'][]>();
-    return log
-      .filter(({ callId, parentId }) => {
-        if (!parentId) return true;
-        childCallMap.set(parentId, (childCallMap.get(parentId) || []).concat(callId));
-        return !collapsed.has(parentId);
-      })
-      .map(({ callId, status }) => ({ ...calls.current.get(callId), status } as Call))
-      .map((call) => {
-        const status =
-          call.status === CallStates.ERROR &&
-          callsById.get(call.parentId)?.status === CallStates.ACTIVE
-            ? CallStates.ACTIVE
-            : call.status;
-        callsById.set(call.id, { ...call, status });
-        return {
-          ...call,
-          status,
-          childCallIds: childCallMap.get(call.id),
-          isCollapsed: collapsed.has(call.id),
-          toggleCollapsed: () =>
-            setCollapsed((ids) => {
-              if (ids.has(call.id)) ids.delete(call.id);
-              else ids.add(call.id);
-              return new Set(ids);
-            }),
-        };
-      });
-  }, [log, collapsed]);
+  const interactions = React.useMemo(
+    () => getInteractions({ log, calls: calls.current, collapsed, setCollapsed }),
+    [log, collapsed]
+  );
 
   return (
     <React.Fragment key="interactions">
