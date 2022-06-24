@@ -415,6 +415,11 @@ export class Instrumenter {
       ) {
         return { __class__: { name: value.constructor.name } };
       }
+      if (Object.prototype.toString.call(value) === '[object Object]') {
+        return Object.fromEntries(
+          Object.entries(value).map(([key, val]) => [key, serializeValues(val)])
+        );
+      }
       return value;
     };
 
