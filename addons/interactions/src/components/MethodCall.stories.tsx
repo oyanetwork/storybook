@@ -57,6 +57,7 @@ export const Args = () => (
     />
     <Node value={{ __class__: { name: 'FooBar' } }} />
     <Node value={{ __function__: { name: 'goFaster' } }} />
+    <Node value={{ __function__: { name: '' } }} />
     <Node value={{ __element__: { localName: 'hr' } }} />
     <Node value={{ __element__: { localName: 'foo', prefix: 'x' } }} />
     <Node value={{ __element__: { localName: 'div', id: 'foo' } }} />
@@ -99,6 +100,7 @@ const calls: Call[] = [
   {
     cursor: 0,
     id: '1',
+    ancestors: [],
     path: ['screen'],
     method: 'getByText',
     storyId: 'kind--story',
@@ -109,6 +111,7 @@ const calls: Call[] = [
   {
     cursor: 1,
     id: '2',
+    ancestors: [],
     path: ['userEvent'],
     method: 'click',
     storyId: 'kind--story',
@@ -119,6 +122,7 @@ const calls: Call[] = [
   {
     cursor: 2,
     id: '3',
+    ancestors: [],
     path: [],
     method: 'expect',
     storyId: 'kind--story',
@@ -129,6 +133,7 @@ const calls: Call[] = [
   {
     cursor: 3,
     id: '4',
+    ancestors: [],
     path: [{ __callId__: '3' }, 'not'],
     method: 'toBe',
     storyId: 'kind--story',
@@ -139,6 +144,7 @@ const calls: Call[] = [
   {
     cursor: 4,
     id: '5',
+    ancestors: [],
     path: ['jest'],
     method: 'fn',
     storyId: 'kind--story',
@@ -149,6 +155,7 @@ const calls: Call[] = [
   {
     cursor: 5,
     id: '6',
+    ancestors: [],
     path: [],
     method: 'expect',
     storyId: 'kind--story',
@@ -159,6 +166,7 @@ const calls: Call[] = [
   {
     cursor: 6,
     id: '7',
+    ancestors: [],
     path: ['expect'],
     method: 'stringMatching',
     storyId: 'kind--story',
@@ -169,6 +177,7 @@ const calls: Call[] = [
   {
     cursor: 7,
     id: '8',
+    ancestors: [],
     path: [{ __callId__: '6' }, 'not'],
     method: 'toHaveBeenCalledWith',
     storyId: 'kind--story',
@@ -182,6 +191,17 @@ const calls: Call[] = [
     interceptable: false,
     retain: false,
   },
+  {
+    cursor: 8,
+    id: '9',
+    ancestors: [],
+    path: [],
+    method: 'step',
+    storyId: 'kind--story',
+    args: ['Custom step label', { __function__: { name: '' } }],
+    interceptable: true,
+    retain: false,
+  },
 ];
 
 const callsById = calls.reduce((acc, call) => {
@@ -189,6 +209,7 @@ const callsById = calls.reduce((acc, call) => {
   return acc;
 }, new Map<Call['id'], Call>());
 
+export const Step = () => <MethodCall call={callsById.get('9')} callsById={callsById} />;
 export const Simple = () => <MethodCall call={callsById.get('1')} callsById={callsById} />;
 export const Nested = () => <MethodCall call={callsById.get('2')} callsById={callsById} />;
 export const Chained = () => <MethodCall call={callsById.get('4')} callsById={callsById} />;

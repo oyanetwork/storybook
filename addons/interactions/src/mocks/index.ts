@@ -3,10 +3,22 @@ import { CallStates, Call } from '@storybook/instrumenter';
 export const getCalls = (finalStatus: CallStates) => {
   const calls: Call[] = [
     {
-      id: 'story--id [3] within',
+      id: 'story--id [3] step',
+      storyId: 'story--id',
+      cursor: 1,
+      ancestors: [],
+      path: [],
+      method: 'step',
+      args: ['Click button', { __function__: { name: '' } }],
+      interceptable: true,
+      retain: false,
+      status: CallStates.DONE,
+    },
+    {
+      id: 'story--id [3] step [1] within',
       storyId: 'story--id',
       cursor: 3,
-      ancestors: [],
+      ancestors: ['story--id [3] step'],
       path: [],
       method: 'within',
       args: [{ __element__: { localName: 'div', id: 'root' } }],
@@ -15,11 +27,11 @@ export const getCalls = (finalStatus: CallStates) => {
       status: CallStates.DONE,
     },
     {
-      id: 'story--id [4] findByText',
+      id: 'story--id [3] step [2] findByText',
       storyId: 'story--id',
       cursor: 4,
-      ancestors: [],
-      path: [{ __callId__: 'story--id [3] within' }],
+      ancestors: ['story--id [3] step'],
+      path: [{ __callId__: 'story--id [3] step [1] within' }],
       method: 'findByText',
       args: ['Click'],
       interceptable: true,
@@ -27,10 +39,10 @@ export const getCalls = (finalStatus: CallStates) => {
       status: CallStates.DONE,
     },
     {
-      id: 'story--id [5] click',
+      id: 'story--id [3] step [3] click',
       storyId: 'story--id',
       cursor: 5,
-      ancestors: [],
+      ancestors: ['story--id [3] step'],
       path: ['userEvent'],
       method: 'click',
       args: [{ __element__: { localName: 'button', innerText: 'Click' } }],
@@ -125,4 +137,6 @@ export const getCalls = (finalStatus: CallStates) => {
 };
 
 export const getInteractions = (finalStatus: CallStates) =>
-  getCalls(finalStatus).filter((call) => call.interceptable);
+  getCalls(finalStatus)
+    .filter((call) => call.interceptable)
+    .map((call) => ({ ...call, childCallIds: [], isCollapsed: false, toggleCollapsed: () => {} }));

@@ -403,7 +403,7 @@ export const MethodCall = ({
   call,
   callsById,
 }: {
-  call: Call;
+  call?: Call;
   callsById: Map<Call['id'], Call>;
 }) => {
   // Call might be undefined during initial render, can be safely ignored.
