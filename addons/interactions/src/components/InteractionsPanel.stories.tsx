@@ -26,7 +26,7 @@ const StyledWrapper = styled.div(({ theme }) => ({
 const interactions = getInteractions(CallStates.DONE);
 
 export default {
-  title: 'Addons/Interactions/Panel',
+  title: 'Addons/Interactions/InteractionsPanel',
   component: InteractionsPanel,
   decorators: [
     (Story: any) => (
