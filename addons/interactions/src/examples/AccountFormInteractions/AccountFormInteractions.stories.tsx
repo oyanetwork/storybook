@@ -3,10 +3,10 @@ import { Meta, ComponentStoryObj } from '@storybook/react';
 import { expect } from '@storybook/jest';
 import { within, waitFor, fireEvent, userEvent } from '@storybook/testing-library';
 
-import { AccountForm } from './AccountForm';
+import { AccountForm } from './AccountFormInteractions';
 
 export default {
-  title: 'Addons/Interactions/AccountForm',
+  title: 'Addons/Interactions/Examples/AccountForm',
   component: AccountForm,
   parameters: {
     layout: 'centered',

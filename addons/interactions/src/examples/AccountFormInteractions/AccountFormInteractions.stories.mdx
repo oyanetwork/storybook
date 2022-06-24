@@ -1,0 +1,31 @@
+import { Meta, Canvas, Story } from '@storybook/addon-docs';
+import { expect } from '@storybook/jest';
+import { within, waitFor, fireEvent, userEvent, screen } from '@storybook/testing-library';
+
+import { AccountForm } from './AccountFormInteractions';
+
+<Meta
+  title="Addons/Interactions/Examples/AccountForm MDX"
+  component={AccountForm}
+  parameters={{ layout: 'centered', theme: 'light' }}
+  argTypes={{
+    onSubmit: { action: true },
+  }}
+/>
+
+## AccountForm
+
+<Canvas>
+  <Story
+    name="StandardEmailFilled"
+    args={{
+      passwordVerification: false,
+    }}
+    play={async ({ args }) => {
+      await userEvent.type(screen.getByTestId('email'), 'username@email.com');
+      await userEvent.type(screen.getByTestId('password1'), 'thepassword');
+      await userEvent.click(screen.getByRole('button', { name: /create account/i }));
+      await expect(args.onSubmit).not.toHaveBeenCalled();
+    }}
+  />
+</Canvas>
