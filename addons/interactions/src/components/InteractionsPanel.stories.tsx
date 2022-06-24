@@ -7,9 +7,9 @@ import { styled } from '@storybook/theming';
 import { userEvent, within, waitFor } from '@storybook/testing-library';
 import { expect } from '@storybook/jest';
 
-import { getCalls, getInteractions } from './mocks';
-import { AddonPanelPure } from './Panel';
-import SubnavStories from './components/Subnav/Subnav.stories';
+import { getCalls, getInteractions } from '../mocks';
+import { InteractionsPanel } from './InteractionsPanel';
+import SubnavStories from './Subnav.stories';
 
 const StyledWrapper = styled.div(({ theme }) => ({
   backgroundColor: theme.background.content,
@@ -27,7 +27,7 @@ const interactions = getInteractions(CallStates.DONE);
 
 export default {
   title: 'Addons/Interactions/Panel',
-  component: AddonPanelPure,
+  component: InteractionsPanel,
   decorators: [
     (Story: any) => (
       <StyledWrapper id="panel-tab-content">
@@ -51,9 +51,9 @@ export default {
     // prop for the AddonPanel used as wrapper of Panel
     active: true,
   },
-} as ComponentMeta<typeof AddonPanelPure>;
+} as ComponentMeta<typeof InteractionsPanel>;
 
-type Story = ComponentStoryObj<typeof AddonPanelPure>;
+type Story = ComponentStoryObj<typeof InteractionsPanel>;
 
 export const Passing: Story = {
   args: {

@@ -4,10 +4,10 @@ import { Call, CallStates, ControlStates } from '@storybook/instrumenter';
 import { styled, typography } from '@storybook/theming';
 import { transparentize } from 'polished';
 
-import { MatcherResult } from '../MatcherResult';
-import { MethodCall } from '../MethodCall';
-import { StatusIcon } from '../StatusIcon/StatusIcon';
-import { Controls } from '../../Panel';
+import { MatcherResult } from './MatcherResult';
+import { MethodCall } from './MethodCall';
+import { StatusIcon } from './StatusIcon';
+import { Controls } from './InteractionsPanel';
 
 const MethodCallWrapper = styled.div(() => ({
   fontFamily: typography.fonts.mono,

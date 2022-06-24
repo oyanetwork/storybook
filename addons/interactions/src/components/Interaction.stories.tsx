@@ -2,10 +2,10 @@ import { ComponentStoryObj, ComponentMeta } from '@storybook/react';
 import { expect } from '@storybook/jest';
 import { CallStates } from '@storybook/instrumenter';
 import { userEvent, within } from '@storybook/testing-library';
-import { getCalls } from '../../mocks';
+import { getCalls } from '../mocks';
 
 import { Interaction } from './Interaction';
-import SubnavStories from '../Subnav/Subnav.stories';
+import SubnavStories from './Subnav.stories';
 
 type Story = ComponentStoryObj<typeof Interaction>;
 

@@ -12,8 +12,8 @@ import {
 import { Call, CallStates, ControlStates } from '@storybook/instrumenter';
 import { styled } from '@storybook/theming';
 
-import { StatusBadge } from '../StatusBadge/StatusBadge';
-import { Controls } from '../../Panel';
+import { StatusBadge } from './StatusBadge';
+import { Controls } from './InteractionsPanel';
 
 const SubnavWrapper = styled.div(({ theme }) => ({
   background: theme.background.app,

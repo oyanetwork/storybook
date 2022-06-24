@@ -4,7 +4,7 @@ import { Call, CallStates } from '@storybook/instrumenter';
 import { styled } from '@storybook/theming';
 
 import { transparentize } from 'polished';
-import localTheme from '../../theme';
+import localTheme from '../theme';
 
 export interface StatusIconProps extends IconsProps {
   status: Call['status'];
