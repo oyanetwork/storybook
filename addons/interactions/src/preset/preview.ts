@@ -1,5 +1,4 @@
 import { addons } from '@storybook/addons';
-import type { Args } from '@storybook/addons';
 import { FORCE_REMOUNT, STORY_RENDER_PHASE_CHANGED } from '@storybook/core-events';
 import type { AnyFramework, ArgsEnhancer } from '@storybook/csf';
 import { instrument } from '@storybook/instrumenter';
