@@ -48,7 +48,7 @@ export type RenderContextCallbacks<TFramework extends AnyFramework> = Pick<
 export const PREPARE_ABORTED = new Error('prepareAborted');
 
 const { step } = instrument(
-  { step: async (label: string, callback: () => Promise<void> | void) => callback() },
+  { step: (label: string, callback: () => Promise<void> | void) => callback() },
   { intercept: true }
 );
 
