@@ -47,7 +47,6 @@ Next, update [`.storybook/main.js`](../configure/overview.md#configure-story-ren
 
 </div>
 
-
 Now when you run Storybook, the Interactions addon will be enabled.
 
 ![Storybook Interactions installed and registered](./addon-interactions-installed-registered.png)
@@ -68,7 +67,7 @@ Make sure to import the Storybook wrappers for Jest and Testing Library rather t
 
 <!-- prettier-ignore-end -->
 
-The above example uses the `canvasElement` to scope your element queries to the current story. It's essential if you want your play functions to eventually be compatible with Storybook Docs, which renders multiple components on the same page.
+The above example uses the `canvasElement` to scope your element queries to the current story. It's essential if you want your play functions to eventually be compatible with Storybook Docs, which renders multiple components on the same page. Additionally, the `step` function can be used to create labeled groups of interactions.
 
 While you can refer to the [Testing Library documentation](https://testing-library.com/docs/) for details on how to use it, there's an important detail that's different when using the Storybook wrapper: **method invocations must be `await`-ed**. It allows you to step back and forth through your interactions using the debugger.
 
