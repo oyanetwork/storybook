@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-standalone-expect */
 import { Story as CSF2Story, Meta, ComponentStoryObj } from '@storybook/react';
 import { expect } from '@storybook/jest';
 import {
@@ -116,38 +117,51 @@ export const Standard: CSF3Story = {
   args: { passwordVerification: false },
 };
 
-export const StandardEmailFilled: CSF3Story = {
+export const StandardEmailFilled = {
   ...Standard,
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement);
-    await fireEvent.change(canvas.getByTestId('email'), {
-      target: {
-        value: 'michael@chromatic.com',
-      },
+
+    await step('Enter email', async () => {
+      await fireEvent.change(canvas.getByTestId('email'), {
+        target: { value: 'michael@chromatic.com' },
+      });
     });
   },
 };
 
-export const StandardEmailFailed: CSF3Story = {
+export const StandardEmailFailed = {
   ...Standard,
-  play: async ({ args, canvasElement }) => {
+  play: async ({ args, canvasElement, step }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(canvas.getByTestId('email'), 'gert@chromatic');
-    await userEvent.type(canvas.getByTestId('password1'), 'supersecret');
-    await userEvent.click(canvas.getByRole('button', { name: /create account/i }));
+
+    await step('Enter email and password', async () => {
+      await userEvent.type(canvas.getByTestId('email'), 'gert@chromatic');
+      await userEvent.type(canvas.getByTestId('password1'), 'supersecret');
+    });
+
+    await step('Submit form', async () => {
+      await userEvent.click(canvas.getByRole('button', { name: /create account/i }));
+    });
 
     await canvas.findByText('Please enter a correctly formatted email address');
     await expect(args.onSubmit).not.toHaveBeenCalled();
   },
 };
 
-export const StandardEmailSuccess: CSF3Story = {
+export const StandardEmailSuccess = {
   ...Standard,
-  play: async ({ args, canvasElement }) => {
+  play: async ({ args, canvasElement, step }) => {
     const canvas = within(canvasElement);
-    await userEvent.type(canvas.getByTestId('email'), 'michael@chromatic.com');
-    await userEvent.type(canvas.getByTestId('password1'), 'testpasswordthatwontfail');
-    await userEvent.click(canvas.getByTestId('submit'));
+
+    await step('Enter email and password', async () => {
+      await userEvent.type(canvas.getByTestId('email'), 'michael@chromatic.com');
+      await userEvent.type(canvas.getByTestId('password1'), 'testpasswordthatwontfail');
+    });
+
+    await step('Submit form', async () => {
+      await userEvent.click(canvas.getByTestId('submit'));
+    });
 
     await waitFor(async () => {
       await expect(args.onSubmit).toHaveBeenCalledTimes(1);
@@ -159,17 +173,23 @@ export const StandardEmailSuccess: CSF3Story = {
   },
 };
 
-export const StandardPasswordFailed: CSF3Story = {
+export const StandardPasswordFailed = {
   ...Standard,
   play: async (context) => {
     const canvas = within(context.canvasElement);
     await StandardEmailFilled.play(context);
-    await userEvent.type(canvas.getByTestId('password1'), 'asdf');
-    await userEvent.click(canvas.getByTestId('submit'));
+
+    await context.step('Enter password', async () => {
+      await userEvent.type(canvas.getByTestId('password1'), 'asdf');
+    });
+
+    await context.step('Submit form', async () => {
+      await userEvent.click(canvas.getByTestId('submit'));
+    });
   },
 };
 
-export const StandardFailHover: CSF3Story = {
+export const StandardFailHover = {
   ...StandardPasswordFailed,
   play: async (context) => {
     const canvas = within(context.canvasElement);
@@ -180,42 +200,56 @@ export const StandardFailHover: CSF3Story = {
   },
 };
 
-export const Verification: CSF3Story = {
+export const Verification = {
   args: { passwordVerification: true },
   argTypes: { onSubmit: { action: 'clicked' } },
 };
 
-export const VerificationPassword: CSF3Story = {
+export const VerificationPassword = {
   ...Verification,
   play: async (context) => {
     const canvas = within(context.canvasElement);
     await StandardEmailFilled.play(context);
-    await userEvent.type(canvas.getByTestId('password1'), 'asdfasdf');
-    await userEvent.click(canvas.getByTestId('submit'));
+    await context.step('Enter password', async () => {
+      await userEvent.type(canvas.getByTestId('password1'), 'asdfasdf');
+    });
+    await context.step('Submit form', async () => {
+      await userEvent.click(canvas.getByTestId('submit'));
+    });
   },
 };
 
-export const VerificationPasswordMismatch: CSF3Story = {
+export const VerificationPasswordMismatch = {
   ...Verification,
   play: async (context) => {
     const canvas = within(context.canvasElement);
     await StandardEmailFilled.play(context);
-    await userEvent.type(canvas.getByTestId('password1'), 'asdfasdf');
-    await userEvent.type(canvas.getByTestId('password2'), 'asdf1234');
-    await userEvent.click(canvas.getByTestId('submit'));
+    await context.step('Enter passwords', async () => {
+      await userEvent.type(canvas.getByTestId('password1'), 'asdfasdf');
+      await userEvent.type(canvas.getByTestId('password2'), 'asdf1234');
+    });
+    await context.step('Submit form', async () => {
+      await userEvent.click(canvas.getByTestId('submit'));
+    });
   },
 };
 
-export const VerificationSuccess: CSF3Story = {
+export const VerificationSuccess = {
   ...Verification,
   play: async (context) => {
     const canvas = within(context.canvasElement);
     await StandardEmailFilled.play(context);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    await userEvent.type(canvas.getByTestId('password1'), 'helloyou', { delay: 50 });
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    await userEvent.type(canvas.getByTestId('password2'), 'helloyou', { delay: 50 });
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    await userEvent.click(canvas.getByTestId('submit'));
+
+    await context.step('Enter passwords', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await userEvent.type(canvas.getByTestId('password1'), 'helloyou', { delay: 50 });
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await userEvent.type(canvas.getByTestId('password2'), 'helloyou', { delay: 50 });
+    });
+
+    await context.step('Submit form', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await userEvent.click(canvas.getByTestId('submit'));
+    });
   },
 };
