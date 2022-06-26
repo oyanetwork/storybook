@@ -96,14 +96,20 @@ export class StoryIndexGenerator {
    * Run the updater function over all the empty cache entries
    */
   async updateExtracted(
-    updater: (specifier: NormalizedStoriesSpecifier, absolutePath: Path) => Promise<CacheEntry>
+    updater: (
+      specifier: NormalizedStoriesSpecifier,
+      absolutePath: Path,
+      existingEntry: CacheEntry
+    ) => Promise<CacheEntry>,
+    overwrite = false
   ) {
     await Promise.all(
       this.specifiers.map(async (specifier) => {
         const entry = this.specifierToCache.get(specifier);
         return Promise.all(
           Object.keys(entry).map(async (absolutePath) => {
-            entry[absolutePath] = entry[absolutePath] || (await updater(specifier, absolutePath));
+            if (entry[absolutePath] && !overwrite) return;
+            entry[absolutePath] = await updater(specifier, absolutePath, entry[absolutePath]);
           })
         );
       })
@@ -112,6 +118,10 @@ export class StoryIndexGenerator {
 
   isDocsMdx(absolutePath: Path) {
     return /(?<!\.stories)\.mdx$/i.test(absolutePath);
+  }
+
+  shouldAddDocsPage(entry: CacheEntry): entry is StoriesCacheEntry {
+    return entry && entry.type === 'stories' && !entry.entries.every((e) => e.type === 'docs');
   }
 
   async ensureExtracted(): Promise<IndexEntry[]> {
@@ -127,6 +137,16 @@ export class StoryIndexGenerator {
       await this.updateExtracted(async (specifier, absolutePath) =>
         this.extractDocs(specifier, absolutePath)
       );
+
+      if (this.options.docs.docsPage) {
+        await this.updateExtracted(
+          async (specifier, absolutePath, existingEntry) =>
+            this.shouldAddDocsPage(existingEntry)
+              ? this.addDocsPageEntry(specifier, absolutePath, existingEntry)
+              : existingEntry,
+          true
+        );
+      }
     }
 
     return this.specifiers.flatMap((specifier) => {
@@ -165,6 +185,45 @@ export class StoryIndexGenerator {
     // }
 
     return dependencies;
+  }
+
+  async index(filePath: string, options: IndexerOptions) {
+    const storyIndexer = this.options.storyIndexers.find((indexer) => indexer.test.exec(filePath));
+    if (!storyIndexer) {
+      throw new Error(`No matching story indexer found for ${filePath}`);
+    }
+    return storyIndexer.indexer(filePath, options);
+  }
+
+  async extractStories(specifier: NormalizedStoriesSpecifier, absolutePath: Path) {
+    const relativePath = path.relative(this.options.workingDir, absolutePath);
+    const entries = [] as IndexEntry[];
+    try {
+      const importPath = slash(normalizeStoryPath(relativePath));
+      const makeTitle = (userTitle?: string) => {
+        return userOrAutoTitleFromSpecifier(importPath, specifier, userTitle);
+      };
+      const csf = await this.index(absolutePath, { makeTitle });
+      csf.stories.forEach(({ id, name, parameters }) => {
+        const base = { id, title: csf.meta.title, name, importPath };
+
+        if (parameters?.docsOnly) {
+          if (this.options.docs.enabled) {
+            entries.push({ ...base, type: 'docs', storiesImports: [], legacy: true });
+          }
+        } else {
+          entries.push({ ...base, type: 'story' });
+        }
+      });
+    } catch (err) {
+      if (err.name === 'NoMetaError') {
+        logger.info(`💡 Skipping ${relativePath}: ${err}`);
+      } else {
+        logger.warn(`🚨 Extraction error on ${relativePath}: ${err}`);
+        throw err;
+      }
+    }
+    return { entries, type: 'stories', dependents: [] } as StoriesCacheEntry;
   }
 
   async extractDocs(specifier: NormalizedStoriesSpecifier, absolutePath: Path) {
@@ -240,43 +299,37 @@ export class StoryIndexGenerator {
     }
   }
 
-  async index(filePath: string, options: IndexerOptions) {
-    const storyIndexer = this.options.storyIndexers.find((indexer) => indexer.test.exec(filePath));
-    if (!storyIndexer) {
-      throw new Error(`No matching story indexer found for ${filePath}`);
+  async addDocsPageEntry(
+    specifier: NormalizedStoriesSpecifier,
+    absolutePath: Path,
+    existing: StoriesCacheEntry
+  ): Promise<StoriesCacheEntry> {
+    if (!existing.entries[0]) {
+      const relativePath = path.relative(this.options.workingDir, absolutePath);
+      logger.warn(
+        `🚨 Unexpected empty list of stories for processed file: ${relativePath}, skipping docs page`
+      );
+      return existing;
     }
-    return storyIndexer.indexer(filePath, options);
-  }
 
-  async extractStories(specifier: NormalizedStoriesSpecifier, absolutePath: Path) {
-    const relativePath = path.relative(this.options.workingDir, absolutePath);
-    const entries = [] as IndexEntry[];
-    try {
-      const importPath = slash(normalizeStoryPath(relativePath));
-      const makeTitle = (userTitle?: string) => {
-        return userOrAutoTitleFromSpecifier(importPath, specifier, userTitle);
-      };
-      const csf = await this.index(absolutePath, { makeTitle });
-      csf.stories.forEach(({ id, name, parameters }) => {
-        const base = { id, title: csf.meta.title, name, importPath };
+    const { title, importPath } = existing.entries[0];
+    const name = this.options.docs.defaultName;
+    const id = toId(title, name);
 
-        if (parameters?.docsOnly) {
-          if (this.options.docs.enabled) {
-            entries.push({ ...base, type: 'docs', storiesImports: [], legacy: true });
-          }
-        } else {
-          entries.push({ ...base, type: 'story' });
-        }
-      });
-    } catch (err) {
-      if (err.name === 'NoMetaError') {
-        logger.info(`💡 Skipping ${relativePath}: ${err}`);
-      } else {
-        logger.warn(`🚨 Extraction error on ${relativePath}: ${err}`);
-        throw err;
-      }
-    }
-    return { entries, type: 'stories', dependents: [] } as StoriesCacheEntry;
+    return {
+      ...existing,
+      entries: [
+        {
+          id,
+          title,
+          name,
+          importPath,
+          storiesImports: [],
+          type: 'docs',
+        },
+        ...existing.entries,
+      ],
+    };
   }
 
   async sortStories(storiesList: IndexEntry[]) {
@@ -293,6 +346,7 @@ export class StoryIndexGenerator {
     if (this.options.storyStoreV7) {
       const storySortParameter = await this.getStorySortParameter();
       const fileNameOrder = this.storyFileNames();
+      console.log(sortableStories);
       sortStoriesV7(sortableStories, storySortParameter, fileNameOrder);
     }
 
