@@ -3,7 +3,7 @@ import remarkSlug from 'remark-slug';
 import remarkExternalLinks from 'remark-external-links';
 import global from 'global';
 
-import type { IndexerOptions, Options, StoryIndexer } from '@storybook/core-common';
+import type { DocsOptions, IndexerOptions, Options, StoryIndexer } from '@storybook/core-common';
 import { logger } from '@storybook/node-logger';
 import { loadCsf } from '@storybook/csf-tools';
 
@@ -137,7 +137,7 @@ export async function webpack(
   return result;
 }
 
-export const storyIndexers = async (indexers?: StoryIndexer[]) => {
+export const storyIndexers = async (indexers: StoryIndexer[] | null) => {
   const mdxIndexer = async (fileName: string, opts: IndexerOptions) => {
     let code = (await fs.readFile(fileName, 'utf-8')).toString();
     // @ts-ignore
@@ -154,4 +154,13 @@ export const storyIndexers = async (indexers?: StoryIndexer[]) => {
     },
     ...(indexers || []),
   ];
+};
+
+export const docs = (docsOptions: DocsOptions) => {
+  return {
+    ...docsOptions,
+    enabled: true,
+    defaultName: 'Docs',
+    docsPage: true,
+  };
 };

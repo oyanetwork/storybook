@@ -176,7 +176,6 @@ describe.each([
       ['prod', buildStaticStandalone],
       ['dev', buildDevStandalone],
     ])('%s', async (mode, builder) => {
-      console.log('running for ', mode, builder);
       const options = {
         ...baseOptions,
         configDir: path.resolve(`${__dirname}/../../../examples/${example}/.storybook`),

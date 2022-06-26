@@ -44,6 +44,7 @@ const options = {
   storyIndexers: [{ test: /\.stories\..*$/, indexer: csfIndexer }],
   storiesV2Compatibility: false,
   storyStoreV7: true,
+  docs: { enabled: true, defaultName: 'docs', docsPage: true },
 };
 
 describe('StoryIndexGenerator', () => {
@@ -175,16 +176,15 @@ describe('StoryIndexGenerator', () => {
     });
 
     describe('docs specifier', () => {
+      const storiesSpecifier: NormalizedStoriesSpecifier = normalizeStoriesEntry(
+        './src/A.stories.(ts|js|jsx)',
+        options
+      );
+      const docsSpecifier: NormalizedStoriesSpecifier = normalizeStoriesEntry(
+        './src/**/*.mdx',
+        options
+      );
       it('extracts stories from the right files', async () => {
-        const storiesSpecifier: NormalizedStoriesSpecifier = normalizeStoriesEntry(
-          './src/A.stories.(ts|js|jsx)',
-          options
-        );
-        const docsSpecifier: NormalizedStoriesSpecifier = normalizeStoriesEntry(
-          './src/**/*.mdx',
-          options
-        );
-
         const generator = new StoryIndexGenerator([storiesSpecifier, docsSpecifier], options);
         await generator.initialize();
 
@@ -231,15 +231,62 @@ describe('StoryIndexGenerator', () => {
       });
 
       it('errors when docs dependencies are missing', async () => {
-        const docsSpecifier: NormalizedStoriesSpecifier = normalizeStoriesEntry(
-          './src/**/MetaOf.mdx',
-          options
-        );
-
         const generator = new StoryIndexGenerator([docsSpecifier], options);
         await expect(() => generator.initialize()).rejects.toThrowErrorMatchingInlineSnapshot(
           `"Could not find \\"../A.stories\\" for docs file \\"src/docs2/MetaOf.mdx\\"."`
         );
+      });
+
+      it('Allows you to override default name for docs files', async () => {
+        const generator = new StoryIndexGenerator([storiesSpecifier, docsSpecifier], {
+          ...options,
+          docs: {
+            ...options.docs,
+            defaultName: 'Info',
+          },
+        });
+        await generator.initialize();
+
+        expect(await generator.getIndex()).toMatchInlineSnapshot(`
+          Object {
+            "entries": Object {
+              "a--info": Object {
+                "id": "a--info",
+                "importPath": "./src/docs2/MetaOf.mdx",
+                "name": "Info",
+                "storiesImports": Array [
+                  "./src/A.stories.js",
+                ],
+                "title": "A",
+                "type": "docs",
+              },
+              "a--story-one": Object {
+                "id": "a--story-one",
+                "importPath": "./src/A.stories.js",
+                "name": "Story One",
+                "title": "A",
+                "type": "story",
+              },
+              "docs2-notitle--info": Object {
+                "id": "docs2-notitle--info",
+                "importPath": "./src/docs2/NoTitle.mdx",
+                "name": "Info",
+                "storiesImports": Array [],
+                "title": "docs2/NoTitle",
+                "type": "docs",
+              },
+              "docs2-yabbadabbadooo--info": Object {
+                "id": "docs2-yabbadabbadooo--info",
+                "importPath": "./src/docs2/Title.mdx",
+                "name": "Info",
+                "storiesImports": Array [],
+                "title": "docs2/Yabbadabbadooo",
+                "type": "docs",
+              },
+            },
+            "v": 4,
+          }
+        `);
       });
     });
   });

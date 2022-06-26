@@ -23,6 +23,11 @@ const config: StorybookConfig = {
     '@storybook/addon-storyshots',
     '@storybook/addon-a11y',
   ],
+  docs: {
+    // enabled: false,
+    defaultName: 'Info',
+    // docsPage: false,
+  },
   typescript: {
     check: true,
     checkOptions: {},

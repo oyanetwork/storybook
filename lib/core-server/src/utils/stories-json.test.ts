@@ -61,6 +61,7 @@ const getInitializedStoryIndexGenerator = async (
     workingDir,
     storiesV2Compatibility: false,
     storyStoreV7: true,
+    docs: { enabled: true, defaultName: 'docs', docsPage: true },
     ...overrides,
   });
   await generator.initialize();
