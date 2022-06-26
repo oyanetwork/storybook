@@ -16,6 +16,7 @@ import type {
   StoryIndexer,
   IndexerOptions,
   NormalizedStoriesSpecifier,
+  DocsOptions,
 } from '@storybook/core-common';
 import { normalizeStoryPath } from '@storybook/core-common';
 import { logger } from '@storybook/node-logger';
@@ -56,6 +57,7 @@ export class StoryIndexGenerator {
       storiesV2Compatibility: boolean;
       storyStoreV7: boolean;
       storyIndexers: StoryIndexer[];
+      docs: DocsOptions;
     }
   ) {
     this.specifierToCache = new Map();
@@ -120,9 +122,12 @@ export class StoryIndexGenerator {
     await this.updateExtracted(async (specifier, absolutePath) =>
       this.isDocsMdx(absolutePath) ? false : this.extractStories(specifier, absolutePath)
     );
-    await this.updateExtracted(async (specifier, absolutePath) =>
-      this.extractDocs(specifier, absolutePath)
-    );
+
+    if (this.options.docs.enabled) {
+      await this.updateExtracted(async (specifier, absolutePath) =>
+        this.extractDocs(specifier, absolutePath)
+      );
+    }
 
     return this.specifiers.flatMap((specifier) => {
       const cache = this.specifierToCache.get(specifier);
@@ -217,7 +222,7 @@ export class StoryIndexGenerator {
       });
 
       const title = userOrAutoTitleFromSpecifier(importPath, specifier, result.title || ofTitle);
-      const name = 'docs';
+      const name = this.options.docs.defaultName;
       const id = toId(title, name);
 
       const docsEntry: DocsCacheEntry = {
@@ -254,10 +259,14 @@ export class StoryIndexGenerator {
       const csf = await this.index(absolutePath, { makeTitle });
       csf.stories.forEach(({ id, name, parameters }) => {
         const base = { id, title: csf.meta.title, name, importPath };
-        const entry: IndexEntry = parameters?.docsOnly
-          ? { ...base, type: 'docs', storiesImports: [], legacy: true }
-          : { ...base, type: 'story' };
-        entries.push(entry);
+
+        if (parameters?.docsOnly) {
+          if (this.options.docs.enabled) {
+            entries.push({ ...base, type: 'docs', storiesImports: [], legacy: true });
+          }
+        } else {
+          entries.push({ ...base, type: 'story' });
+        }
       });
     } catch (err) {
       if (err.name === 'NoMetaError') {

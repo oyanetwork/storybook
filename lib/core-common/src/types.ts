@@ -307,6 +307,21 @@ export type Entry = string;
 
 type StorybookRefs = Record<string, { title: string; url: string } | { disable: boolean }>;
 
+export type DocsOptions = {
+  /**
+   * Should we generate docs entries at all under any circumstances? (i.e. can they be rendered)
+   */
+  enabled?: boolean;
+  /**
+   * What should we call the generated docs entries?
+   */
+  defaultName?: string;
+  /**
+   * Should we generate a docs entry per CSF file?
+   */
+  docsPage?: boolean;
+};
+
 /**
  * The interface for Storybook configuration in `main.ts` files.
  */
@@ -434,4 +449,9 @@ export interface StorybookConfig {
    * Process CSF files for the story index.
    */
   storyIndexers?: (indexers: StoryIndexer[], options: Options) => StoryIndexer[];
+
+  /**
+   * Docs related features in index generation
+   */
+  docs?: DocsOptions;
 }
