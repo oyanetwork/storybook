@@ -237,6 +237,31 @@ describe('StoryIndexGenerator', () => {
         );
       });
 
+      it('generates no docs entries when docs are disabled', async () => {
+        const generator = new StoryIndexGenerator([storiesSpecifier, docsSpecifier], {
+          ...options,
+          docs: {
+            ...options.docs,
+            enabled: false,
+          },
+        });
+        await generator.initialize();
+
+        expect(await generator.getIndex()).toMatchInlineSnapshot(`
+          Object {
+            "entries": Object {
+              "a--story-one": Object {
+                "id": "a--story-one",
+                "importPath": "./src/A.stories.js",
+                "name": "Story One",
+                "title": "A",
+                "type": "story",
+              },
+            },
+            "v": 4,
+          }
+        `);
+      });
       it('Allows you to override default name for docs files', async () => {
         const generator = new StoryIndexGenerator([storiesSpecifier, docsSpecifier], {
           ...options,
