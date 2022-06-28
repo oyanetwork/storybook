@@ -104,12 +104,10 @@ const Note = styled(TooltipNote)(({ theme }) => ({
 const RowMessage = styled('div')(({ theme }) => ({
   padding: '8px 10px 8px 36px',
   fontSize: typography.size.s1,
+  color: theme.color.defaultText,
   pre: {
     margin: 0,
     padding: 0,
-  },
-  p: {
-    color: theme.color.dark,
   },
 }));
 

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { AddonPanel, Link, Placeholder } from '@storybook/components';
 import { Call, CallStates, ControlStates } from '@storybook/instrumenter';
 import { styled } from '@storybook/theming';
+import { transparentize } from 'polished';
 
 import { Subnav } from './Subnav';
 import { Interaction } from './Interaction';
@@ -39,7 +40,11 @@ interface InteractionsPanelProps {
 
 const Container = styled.div<{ withException: boolean }>(({ theme, withException }) => ({
   minHeight: '100%',
-  background: withException ? theme.background.warning : theme.background.content,
+  background: theme.background.content,
+  ...(withException && {
+    backgroundColor:
+      theme.base === 'dark' ? transparentize(0.93, theme.color.negative) : theme.background.warning,
+  }),
 }));
 
 const CaughtException = styled.div(({ theme }) => ({
