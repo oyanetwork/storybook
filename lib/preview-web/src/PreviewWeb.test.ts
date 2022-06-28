@@ -499,7 +499,7 @@ describe('PreviewWeb', () => {
 
             Perhaps it needs to be upgraded for Storybook 6.4?
 
-            More info: https://github.com/storybookjs/storybook/blob/next/MIGRATION.md#mainjs-framework-field          ]
+            More info: https://github.com/storybookjs/storybook/blob/next/MIGRATION.md#mainjs-framework-field]
           `);
         } finally {
           projectAnnotations.renderToDOM = originalRenderToDOM;

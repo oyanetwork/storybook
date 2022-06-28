@@ -227,7 +227,7 @@ describe('Instrumenter', () => {
     expect(callSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'kind--story [0] fn1 [0] fn2 [0] fn3',
-        ancestors: ['kind--story [0] fn1 [0] fn2'],
+        ancestors: ['kind--story [0] fn1', 'kind--story [0] fn1 [0] fn2'],
       })
     );
     expect(callSpy).toHaveBeenCalledWith(
