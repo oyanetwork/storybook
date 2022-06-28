@@ -13,13 +13,13 @@ import global from 'global';
 import { Call, CallRef, CallStates, ControlStates, LogItem, Options, State } from './types';
 
 export const EVENTS = {
-  CALL: 'instrumenter/call',
-  SYNC: 'instrumenter/sync',
-  START: 'instrumenter/start',
-  BACK: 'instrumenter/back',
-  GOTO: 'instrumenter/goto',
-  NEXT: 'instrumenter/next',
-  END: 'instrumenter/end',
+  CALL: 'storybook/instrumenter/call',
+  SYNC: 'storybook/instrumenter/sync',
+  START: 'storybook/instrumenter/start',
+  BACK: 'storybook/instrumenter/back',
+  GOTO: 'storybook/instrumenter/goto',
+  NEXT: 'storybook/instrumenter/next',
+  END: 'storybook/instrumenter/end',
 };
 
 type PatchedObj<TObj> = {
