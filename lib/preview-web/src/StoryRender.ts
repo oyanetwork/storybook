@@ -42,17 +42,20 @@ function createController(): AbortController {
   } as AbortController;
 }
 
+function createStepFunction() {
+  const { step } = instrument(
+    { step: (label: string, callback: () => MaybePromise<void>) => callback() },
+    { intercept: true }
+  );
+  return step;
+}
+
 export type RenderContextCallbacks<TFramework extends AnyFramework> = Pick<
   RenderContext<TFramework>,
   'showMain' | 'showError' | 'showException'
 >;
 
 export const PREPARE_ABORTED = new Error('prepareAborted');
-
-const { step } = instrument(
-  { step: (label: string, callback: () => MaybePromise<void>) => callback() },
-  { intercept: true }
-);
 
 export interface Render<TFramework extends AnyFramework> {
   id: StoryId;
@@ -69,6 +72,8 @@ export class StoryRender<TFramework extends AnyFramework> implements Render<TFra
   public phase?: RenderPhase;
 
   private abortController?: AbortController;
+
+  private stepFunction?: (label: string, callback: () => MaybePromise<void>) => void;
 
   private canvasElement?: HTMLElement;
 
@@ -88,6 +93,7 @@ export class StoryRender<TFramework extends AnyFramework> implements Render<TFra
     story?: Story<TFramework>
   ) {
     this.abortController = createController();
+    this.stepFunction = createStepFunction();
 
     // Allow short-circuiting preparing if we happen to already
     // have the story (this is used by docs mode)
@@ -198,7 +204,7 @@ export class StoryRender<TFramework extends AnyFramework> implements Render<TFra
         story: name,
         ...this.callbacks,
         forceRemount: forceRemount || this.notYetRendered,
-        playContext: { ...renderStoryContext, step },
+        playContext: { ...renderStoryContext, step: this.stepFunction },
         storyContext: renderStoryContext,
         storyFn: () => unboundStoryFn(renderStoryContext),
         unboundStoryFn,
