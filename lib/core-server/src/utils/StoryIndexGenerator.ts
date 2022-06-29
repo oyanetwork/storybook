@@ -158,7 +158,7 @@ export class StoryIndexGenerator {
 
     return this.specifiers.flatMap((specifier) => {
       const cache = this.specifierToCache.get(specifier);
-      return Object.values(cache).flatMap((entry) => {
+      return Object.values(cache).flatMap((entry): IndexEntry[] => {
         if (!entry) return [];
         if (entry.type === 'docs') return [entry];
         return entry.entries;

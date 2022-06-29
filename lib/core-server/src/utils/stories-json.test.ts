@@ -750,6 +750,7 @@ describe('convertToIndexV3', () => {
           storiesImports: ['./src/A.stories.js'],
           title: 'A',
           type: 'docs',
+          standalone: true,
         },
         'a--story-one': {
           id: 'a--story-one',
