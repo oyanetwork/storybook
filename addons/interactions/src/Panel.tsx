@@ -21,7 +21,7 @@ const INITIAL_CONTROL_STATES = {
   end: false,
 };
 
-const getInteractions = ({
+export const getInteractions = ({
   log,
   calls,
   collapsed,
