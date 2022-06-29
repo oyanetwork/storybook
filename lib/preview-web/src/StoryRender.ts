@@ -44,6 +44,16 @@ function createController(): AbortController {
   } as AbortController;
 }
 
+function createIdlePromise() {
+  return new Promise<void>((resolve) => {
+    try {
+      global.window.requestIdleCallback(resolve, { timeout: 1000 });
+    } catch (e) {
+      setTimeout(resolve, 0);
+    }
+  });
+}
+
 export type RenderContextCallbacks<TFramework extends AnyFramework> = Pick<
   RenderContext<TFramework>,
   'showMain' | 'showError' | 'showException'
@@ -201,8 +211,8 @@ export class StoryRender<TFramework extends AnyFramework> implements Render<TFra
       };
 
       await this.runPhase(abortSignal, 'rendering', async () => {
-        this.teardownRender =
-          (await this.renderToScreen(renderContext, this.canvasElement)) || (() => {});
+        const teardown = await this.renderToScreen(renderContext, this.canvasElement);
+        this.teardownRender = teardown || (() => {});
       });
       this.notYetRendered = false;
       if (abortSignal.aborted) return;
@@ -210,6 +220,7 @@ export class StoryRender<TFramework extends AnyFramework> implements Render<TFra
       if (forceRemount && playFunction) {
         this.disableKeyListeners = true;
         try {
+          await createIdlePromise();
           await this.runPhase(abortSignal, 'playing', async () => {
             await playFunction(renderContext.storyContext);
           });
