@@ -21,7 +21,7 @@ import type {
 import { normalizeStoryPath } from '@storybook/core-common';
 import { logger } from '@storybook/node-logger';
 import { getStorySortParameter } from '@storybook/csf-tools';
-import type { ComponentTitle } from '@storybook/csf';
+import type { ComponentTitle, StoryName } from '@storybook/csf';
 import { toId } from '@storybook/csf';
 
 type DocsCacheEntry = DocsIndexEntry;
@@ -121,7 +121,13 @@ export class StoryIndexGenerator {
   }
 
   shouldAddDocsPage(entry: CacheEntry): entry is StoriesCacheEntry {
-    return entry && entry.type === 'stories' && !entry.entries.every((e) => e.type === 'docs');
+    return (
+      entry &&
+      entry.type === 'stories' &&
+      !entry.entries.every((e) => e.type === 'docs') &&
+      // TODO fix this mess
+      !(entry.entries[0].type === 'docs' && entry.entries[0].storiesImports.length === 0)
+    );
   }
 
   async ensureExtracted(): Promise<IndexEntry[]> {
@@ -209,7 +215,7 @@ export class StoryIndexGenerator {
 
         if (parameters?.docsOnly) {
           if (this.options.docs.enabled) {
-            entries.push({ ...base, type: 'docs', storiesImports: [], legacy: true });
+            entries.push({ ...base, type: 'docs', storiesImports: [], standalone: false });
           }
         } else {
           entries.push({ ...base, type: 'story' });
@@ -245,8 +251,16 @@ export class StoryIndexGenerator {
       // eslint-disable-next-line global-require
       const { analyze } = await require('@storybook/docs-mdx');
       const content = await fs.readFile(absolutePath, 'utf8');
-      // { title?, of?, imports? }
-      const result = analyze(content);
+      const result: {
+        title?: ComponentTitle;
+        of?: Path;
+        name?: StoryName;
+        isTemplate?: boolean;
+        imports?: Path[];
+      } = analyze(content);
+
+      // Templates are not indexed
+      if (result.isTemplate) return false;
 
       const absoluteImports = (result.imports as string[]).map((p) =>
         makeAbsolute(p, normalizedPath, this.options.workingDir)
@@ -281,7 +295,7 @@ export class StoryIndexGenerator {
       });
 
       const title = userOrAutoTitleFromSpecifier(importPath, specifier, result.title || ofTitle);
-      const name = this.options.docs.defaultName;
+      const name = result.name || this.options.docs.defaultName;
       const id = toId(title, name);
 
       const docsEntry: DocsCacheEntry = {
@@ -291,6 +305,7 @@ export class StoryIndexGenerator {
         importPath,
         storiesImports: dependencies.map((dep) => dep.entries[0].importPath),
         type: 'docs',
+        standalone: true,
       };
       return docsEntry;
     } catch (err) {
@@ -326,17 +341,66 @@ export class StoryIndexGenerator {
           importPath,
           storiesImports: [],
           type: 'docs',
+          standalone: false,
         },
         ...existing.entries,
       ],
     };
   }
 
+  chooseDuplicate(betterEntry: IndexEntry, worseEntry: IndexEntry): IndexEntry {
+    const changeDocsName = 'Use `<Meta of={} name="Other Name">` to distinguish them.';
+
+    if (betterEntry.type === 'story') {
+      // This shouldn't be possible
+      if (worseEntry.type === 'story')
+        throw new Error(`Duplicate stories with id: ${betterEntry.id}`);
+
+      let worseDescriptor = `component docs page`;
+      // TODO -- better check for docsPage
+      if (worseEntry.storiesImports.length === 0) {
+        worseDescriptor = `automatically generated docs page`;
+      }
+      if (betterEntry.name === this.options.docs.defaultName) {
+        logger.warn(
+          `🚨 You have a story for ${betterEntry.title} with the same name as your default docs entry name (${betterEntry.name}), so the docs page is being dropped. Consider changing the story name.`
+        );
+      } else {
+        logger.warn(
+          `🚨 You have a story for ${betterEntry.title} with the same name as your ${worseDescriptor} (${worseEntry.name}), so the docs page is being dropped. ${changeDocsName}`
+        );
+      }
+    } else {
+      // Check if the other is truly better -- story is better than docs
+      if (worseEntry.type === 'story') return this.chooseDuplicate(worseEntry, betterEntry);
+
+      // Check if the other is truly better -- manual docs better than automatic
+      // TODO -- better check for docsPage
+      if (betterEntry.storiesImports.length === 0)
+        return this.chooseDuplicate(worseEntry, betterEntry);
+
+      // TODO -- better check for docsPage
+      if (worseEntry.storiesImports.length > 0) {
+        logger.warn(
+          `🚨 You have two component docs pages with the same name ${betterEntry.title}:${betterEntry.name}. ${changeDocsName}`
+        );
+      }
+      // If the worse entry is automatically generated, that's fine!
+    }
+
+    return betterEntry;
+  }
+
   async sortStories(storiesList: IndexEntry[]) {
     const entries: StoryIndex['entries'] = {};
 
     storiesList.forEach((entry) => {
-      entries[entry.id] = entry;
+      const existing = entries[entry.id];
+      if (existing) {
+        entries[entry.id] = this.chooseDuplicate(existing, entry);
+      } else {
+        entries[entry.id] = entry;
+      }
     });
 
     const sortableStories = Object.values(entries);
@@ -346,7 +410,6 @@ export class StoryIndexGenerator {
     if (this.options.storyStoreV7) {
       const storySortParameter = await this.getStorySortParameter();
       const fileNameOrder = this.storyFileNames();
-      console.log(sortableStories);
       sortStoriesV7(sortableStories, storySortParameter, fileNameOrder);
     }
 

@@ -8126,7 +8126,7 @@ __metadata:
     "@storybook/core-events": 7.0.0-alpha.6
     "@storybook/csf": 0.0.2--canary.4566f4d.1
     "@storybook/csf-tools": 7.0.0-alpha.6
-    "@storybook/docs-mdx": 0.0.1-canary.1.4bea5cc.0
+    "@storybook/docs-mdx": 0.0.1-canary.12433cf.0
     "@storybook/manager-webpack5": 7.0.0-alpha.6
     "@storybook/node-logger": 7.0.0-alpha.6
     "@storybook/semver": ^7.3.2
@@ -8266,15 +8266,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@storybook/docs-mdx@npm:0.0.1-canary.1.4bea5cc.0":
-  version: 0.0.1-canary.1.4bea5cc.0
-  resolution: "@storybook/docs-mdx@npm:0.0.1-canary.1.4bea5cc.0"
+"@storybook/docs-mdx@npm:0.0.1-canary.12433cf.0":
+  version: 0.0.1-canary.12433cf.0
+  resolution: "@storybook/docs-mdx@npm:0.0.1-canary.12433cf.0"
   dependencies:
     "@babel/traverse": ^7.12.11
     "@mdx-js/mdx": ^2.0.0
     estree-to-babel: ^4.9.0
     hast-util-to-estree: ^2.0.2
-  checksum: e124e704f31908775f42caf61ed88daed1fc21d582a0884bc38af603f1dcc32647eb0472b2ade72b361d3b5c2d467b9d6ea41def56b62ad1b3169e0229be3a7f
+  checksum: 41ad8df3c898d0eea257ffee4c7a127625ebd95d7af01899b342562254e90c70e4c8f56ae32ad8171c72f1cc0503c8c5967c43fc9ef2b90eaee2506060db898c
   languageName: node
   linkType: hard
 
