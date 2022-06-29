@@ -26,8 +26,8 @@ import {
   RenderToDOM,
 } from '@storybook/store';
 
-import { StoryRender } from './StoryRender';
-import { DocsRender } from './DocsRender';
+import { StoryRender } from './render/StoryRender';
+import { AbstractDocsRender } from './render/AbstractDocsRender';
 
 const { fetch } = global;
 
@@ -324,7 +324,7 @@ export class Preview<TFramework extends AnyFramework> {
   }
 
   async teardownRender(
-    render: StoryRender<TFramework> | DocsRender<TFramework>,
+    render: StoryRender<TFramework> | AbstractDocsRender<TFramework>,
     { viewModeChanged }: { viewModeChanged?: boolean } = {}
   ) {
     this.storyRenders = this.storyRenders.filter((r) => r !== render);
