@@ -18,7 +18,7 @@ import { Channel } from '@storybook/addons';
 import {
   STORY_RENDER_PHASE_CHANGED,
   STORY_RENDERED,
-  STORY_THREW_EXCEPTION,
+  PLAY_FUNCTION_THREW_EXCEPTION,
 } from '@storybook/core-events';
 
 const { AbortController } = global;
@@ -218,7 +218,7 @@ export class StoryRender<TFramework extends AnyFramework> implements Render<TFra
           logger.error(error);
           await this.runPhase(abortSignal, 'errored', async () => {
             const { name: errorName = 'Error', message = String(error), stack } = error;
-            this.channel.emit(STORY_THREW_EXCEPTION, { name: errorName, message, stack });
+            this.channel.emit(PLAY_FUNCTION_THREW_EXCEPTION, { name: errorName, message, stack });
           });
         }
         this.disableKeyListeners = false;

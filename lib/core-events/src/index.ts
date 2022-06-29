@@ -29,6 +29,8 @@ enum events {
   STORY_THREW_EXCEPTION = 'storyThrewException',
   // Emitted at various times during rendering
   STORY_RENDER_PHASE_CHANGED = 'storyRenderPhaseChanged',
+  // Emitted when the play function throws
+  PLAY_FUNCTION_THREW_EXCEPTION = 'playFunctionThrewException',
   // Tell the story store to update (a subset of) a stories arg values
   UPDATE_STORY_ARGS = 'updateStoryArgs',
   // The values of a stories args just changed
@@ -79,6 +81,7 @@ export const {
   STORY_ERRORED,
   STORY_THREW_EXCEPTION,
   STORY_RENDER_PHASE_CHANGED,
+  PLAY_FUNCTION_THREW_EXCEPTION,
   UPDATE_STORY_ARGS,
   STORY_ARGS_UPDATED,
   RESET_STORY_ARGS,

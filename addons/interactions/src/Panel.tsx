@@ -4,7 +4,7 @@ import { useChannel, useParameter, StoryId } from '@storybook/api';
 import {
   IGNORED_EXCEPTION,
   STORY_RENDER_PHASE_CHANGED,
-  STORY_THREW_EXCEPTION,
+  PLAY_FUNCTION_THREW_EXCEPTION,
   FORCE_REMOUNT,
 } from '@storybook/core-events';
 import { EVENTS, Call, CallStates, ControlStates, LogItem } from '@storybook/instrumenter';
@@ -105,7 +105,7 @@ export const Panel: React.FC<{ active: boolean }> = (props) => {
         setPausedAt(undefined);
         if (event.newPhase === 'rendering') setCaughtException(undefined);
       },
-      [STORY_THREW_EXCEPTION]: (e) => {
+      [PLAY_FUNCTION_THREW_EXCEPTION]: (e) => {
         if (e?.message !== IGNORED_EXCEPTION.message) setCaughtException(e);
         else setCaughtException(undefined);
       },
