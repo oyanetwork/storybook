@@ -244,7 +244,7 @@ export class StoryStore<TFramework extends AnyFramework> {
 
   async loadEntry(id: StoryId) {
     const entry = await this.storyIdToEntry(id);
-    if (entry.type === 'docs' && !entry.legacy) {
+    if (entry.type === 'docs' && entry.standalone) {
       return this.loadDocsFileById(id);
     }
     return this.loadCSFFileByStoryId(id);

@@ -44,7 +44,7 @@ export class DocsRender<TFramework extends AnyFramework> implements Render<TFram
     public entry: IndexEntry
   ) {
     this.id = entry.id;
-    this.legacy = entry.type !== 'docs' || !!entry.legacy;
+    this.legacy = entry.type !== 'docs' || !entry.standalone;
   }
 
   // The two story "renders" are equal and have both loaded the same story

@@ -151,6 +151,7 @@ export const storyIndexers = async (indexers: StoryIndexer[] | null) => {
     {
       test: /(stories|story)\.mdx$/,
       indexer: mdxIndexer,
+      addDocsTemplate: true,
     },
     ...(indexers || []),
   ];

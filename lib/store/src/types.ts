@@ -22,9 +22,21 @@ import type {
   PartialStoryFn,
   Parameters,
 } from '@storybook/csf';
-import type { StoryIndexEntry, DocsIndexEntry, IndexEntry } from '@storybook/addons';
+import type {
+  StoryIndexEntry,
+  DocsIndexEntry,
+  TemplateDocsIndexEntry,
+  StandaloneDocsIndexEntry,
+  IndexEntry,
+} from '@storybook/addons';
 
-export type { StoryIndexEntry, DocsIndexEntry, IndexEntry };
+export type {
+  StoryIndexEntry,
+  DocsIndexEntry,
+  IndexEntry,
+  TemplateDocsIndexEntry,
+  StandaloneDocsIndexEntry,
+};
 export type { StoryId, Parameters };
 export type Path = string;
 export type ModuleExport = any;
